@@ -1,0 +1,458 @@
+package com.nothing.camera2magic.ui.screen.scope
+
+import android.content.Intent
+import android.webkit.MimeTypeMap
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.captionBar
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.nothing.camera2magic.R
+import com.nothing.camera2magic.ui.component.BlurredBar
+import com.nothing.camera2magic.ui.component.CardSegment
+import com.nothing.camera2magic.ui.component.ListPopupDefaults
+import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
+import com.nothing.camera2magic.viewmodel.ConfigRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.MoreCircle
+import top.yukonga.miuix.kmp.overlay.OverlayListPopup
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+
+private enum class MediaMode { GLOBAL, PHOTO, VIDEO }
+
+@Composable
+fun AppConfigScreen(
+    packageName: String,
+    appLabel: String,
+    repository: ConfigRepository,
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scrollBehavior = MiuixScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else colorScheme.surface
+    val scope = rememberCoroutineScope()
+
+    var hookEnabled by remember { mutableStateOf(repository.getAppHookEnabled(packageName)) }
+    val initMode = when (repository.getAppMediaMode(packageName)) {
+        "photo" -> MediaMode.PHOTO
+        "video" -> MediaMode.VIDEO
+        else -> MediaMode.GLOBAL
+    }
+    var mediaMode by remember { mutableStateOf(initMode) }
+    var photoUri by remember { mutableStateOf(repository.getAppPhotoUri(packageName)) }
+    var videoUri by remember { mutableStateOf(repository.getAppVideoUri(packageName)) }
+
+    var pendingMediaMode by remember { mutableStateOf<MediaMode?>(null) }
+    val pickMediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        val mode = pendingMediaMode ?: return@rememberLauncherForActivityResult
+        pendingMediaMode = null
+        if (uri == null) return@rememberLauncherForActivityResult
+        context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        when (mode) {
+            MediaMode.PHOTO -> {
+                photoUri = uri.toString()
+                repository.setAppPhotoUri(packageName, uri.toString())
+            }
+            MediaMode.VIDEO -> {
+                videoUri = uri.toString()
+                repository.setAppVideoUri(packageName, uri.toString())
+            }
+            MediaMode.GLOBAL -> return@rememberLauncherForActivityResult
+        }
+        scope.launch(Dispatchers.IO) {
+            val mimeType = context.contentResolver.getType(uri)
+            val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+            val fileName = if (extension != null) "${mode.name.lowercase()}_$packageName.$extension" else "${mode.name.lowercase()}_$packageName"
+            val success = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    repository.prepareRemoteMedia(fileName, input)
+                } ?: false
+            }.getOrDefault(false)
+            if (success) {
+                when (mode) {
+                    MediaMode.PHOTO -> repository.setAppRemotePhoto(packageName, fileName)
+                    MediaMode.VIDEO -> repository.setAppRemoteVideo(packageName, fileName)
+                    MediaMode.GLOBAL -> {}
+                }
+            }
+        }
+    }
+
+    val onLaunchApp: () -> Unit = {
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) context.startActivity(intent)
+        else Toast.makeText(context, "Cannot launch", Toast.LENGTH_SHORT).show()
+    }
+    val onForceStopApp: () -> Unit = {
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "am force-stop $packageName"))
+            Toast.makeText(context, "Force stopped", Toast.LENGTH_SHORT).show()
+        }.onFailure { Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show() }
+    }
+
+    Scaffold(
+        topBar = {
+            TopBar(
+                onBack = onBack,
+                onLaunchApp = onLaunchApp,
+                onForceStopApp = onForceStopApp,
+                scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                barColor = barColor,
+            )
+        },
+
+        contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)
+    ) { innerPadding ->
+        Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(top = 16.dp)
+                    .scrollEndHaptic()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = innerPadding,
+                overscrollEffect = null
+            ) {
+                item {
+                    AppConfigInner(
+                        packageName = packageName,
+                        appLabel = appLabel,
+                        hookEnabled = hookEnabled,
+                        onHookEnabledChange = { hookEnabled = it; repository.setAppHookEnabled(packageName, it) },
+                        mediaMode = mediaMode,
+                        onMediaModeChange = { mediaMode = it; repository.setAppMediaMode(packageName, it.name.lowercase()) },
+                        photoUri = photoUri,
+                        onPhotoUriChange = {
+                            if (it == null) {
+                                repository.getAppRemotePhoto(packageName)?.let { fn -> repository.deleteRemoteMedia(fn) }
+                                repository.setAppRemotePhoto(packageName, null)
+                            }
+                            photoUri = it; repository.setAppPhotoUri(packageName, it)
+                        },
+                        videoUri = videoUri,
+                        onVideoUriChange = {
+                            if (it == null) {
+                                repository.getAppRemoteVideo(packageName)?.let { fn -> repository.deleteRemoteMedia(fn) }
+                                repository.setAppRemoteVideo(packageName, null)
+                            }
+                            videoUri = it; repository.setAppVideoUri(packageName, it)
+                        },
+                        pendingMediaMode = pendingMediaMode,
+                        onPickMedia = { mode ->
+                            pendingMediaMode = mode
+                            pickMediaLauncher.launch(
+                                PickVisualMediaRequest(
+                                    when (mode) {
+                                        MediaMode.PHOTO -> ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        MediaMode.VIDEO -> ActivityResultContracts.PickVisualMedia.VideoOnly
+                                        MediaMode.GLOBAL -> ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    }
+                                )
+                            )
+                        },
+                    )
+                    Spacer(
+                        Modifier.height(
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                                    WindowInsets.captionBar.asPaddingValues().calculateBottomPadding()
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppConfigInner(
+    packageName: String,
+    appLabel: String,
+    hookEnabled: Boolean,
+    onHookEnabledChange: (Boolean) -> Unit,
+    mediaMode: MediaMode,
+    onMediaModeChange: (MediaMode) -> Unit,
+    photoUri: String?,
+    onPhotoUriChange: (String?) -> Unit,
+    videoUri: String?,
+    onVideoUriChange: (String?) -> Unit,
+    pendingMediaMode: MediaMode?,
+    onPickMedia: (MediaMode) -> Unit,
+) {
+    Column {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 12.dp),
+            insideMargin = PaddingValues(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val icon = loadAppIcon(LocalContext.current, packageName)
+                if (icon != null) {
+                    Image(
+                        bitmap = icon.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 12.dp).size(48.dp),
+                    )
+                } else {
+                    Box(Modifier.padding(end = 12.dp).size(48.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = appLabel,
+                        color = colorScheme.onSurface,
+                        fontWeight = FontWeight(550),
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = packageName,
+                        fontSize = 12.sp,
+                        color = colorScheme.onSurfaceVariantSummary,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 12.dp),
+        ) {
+            SwitchPreference(
+                title = stringResource(R.string.app_config_enable_hook),
+                checked = hookEnabled,
+                onCheckedChange = onHookEnabledChange,
+            )
+        }
+
+        CardSegment(
+            isFirst = true,
+            isLast = true,
+            outerHorizontalPadding = 12.dp,
+            outerBottomPadding = 12.dp,
+        ) {
+            val list = listOf(
+                stringResource(R.string.app_config_follow_global),
+                stringResource(R.string.app_config_photo),
+                stringResource(R.string.app_config_video),
+            )
+            val modes = listOf(MediaMode.GLOBAL, MediaMode.PHOTO, MediaMode.VIDEO)
+            val selectedIndex = modes.indexOf(mediaMode)
+            OverlayDropdownPreference(
+                title = stringResource(R.string.app_config_profile),
+                items = list,
+                selectedIndex = if (selectedIndex == -1) 0 else selectedIndex,
+            ) {
+                onMediaModeChange(modes[it])
+            }
+
+            AnimatedVisibility(
+                visible = mediaMode == MediaMode.PHOTO,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPickMedia(MediaMode.PHOTO) }
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.app_config_select_photo), fontSize = textStyles.body2.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
+                        Text(
+                            photoUri ?: stringResource(R.string.app_config_no_media),
+                            fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (photoUri != null) {
+                        IconButton(onClick = { onPhotoUriChange(null) }) {
+                            Icon(MiuixIcons.Delete, contentDescription = null, tint = colorScheme.onSurfaceVariantActions)
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = mediaMode == MediaMode.VIDEO,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPickMedia(MediaMode.VIDEO) }
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.app_config_select_video), fontSize = textStyles.body2.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
+                        Text(
+                            videoUri ?: stringResource(R.string.app_config_no_media),
+                            fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (videoUri != null) {
+                        IconButton(onClick = { onVideoUriChange(null) }) {
+                            Icon(MiuixIcons.Delete, contentDescription = null, tint = colorScheme.onSurfaceVariantActions)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopBar(
+    onBack: () -> Unit,
+    onLaunchApp: () -> Unit,
+    onForceStopApp: () -> Unit,
+    scrollBehavior: ScrollBehavior,
+    backdrop: LayerBackdrop?,
+    barColor: Color,
+) {
+    BlurredBar(backdrop) {
+        TopAppBar(
+            color = barColor,
+            title = stringResource(R.string.app_config_title),
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    val layoutDirection = LocalLayoutDirection.current
+                    Icon(
+                        modifier = Modifier.graphicsLayer {
+                            if (layoutDirection == LayoutDirection.Rtl) scaleX = -1f
+                        },
+                        imageVector = MiuixIcons.Back,
+                        contentDescription = null,
+                        tint = colorScheme.onBackground,
+                    )
+                }
+            },
+            actions = {
+                val showTopPopup = remember { mutableStateOf(false) }
+                IconButton(
+                    onClick = { showTopPopup.value = true },
+                    holdDownState = showTopPopup.value,
+                ) {
+                    Icon(
+                        imageVector = MiuixIcons.MoreCircle,
+                        tint = colorScheme.onSurface,
+                        contentDescription = null,
+                    )
+                }
+                OverlayListPopup(
+                    show = showTopPopup.value,
+                    popupPositionProvider = ListPopupDefaults.MenuPositionProvider,
+                    alignment = PopupPositionProvider.Align.TopEnd,
+                    onDismissRequest = { showTopPopup.value = false },
+                    content = {
+                        ListPopupColumn {
+                            val items = listOf(
+                                stringResource(R.string.app_config_launch_app),
+                                stringResource(R.string.app_config_force_stop),
+                            )
+                            items.forEachIndexed { index, text ->
+                                DropdownImpl(
+                                    text = text,
+                                    isSelected = false,
+                                    optionSize = items.size,
+                                    index = index,
+                                    onSelectedIndexChange = {
+                                        when (index) {
+                                            0 -> onLaunchApp()
+                                            1 -> onForceStopApp()
+                                        }
+                                        showTopPopup.value = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                )
+            },
+            scrollBehavior = scrollBehavior,
+        )
+    }
+}
+
+

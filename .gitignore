@@ -1,0 +1,25 @@
+# Gradle 构建产物
+.gradle/
+**/build/
+
+# 本机配置（不入库）
+local.properties
+
+# IDE - IntelliJ / Android Studio
+.idea/
+*.iml
+.kotlin/
+
+# Android 构建/捕获产物
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# 操作系统文件
+.DS_Store
+Thumbs.db

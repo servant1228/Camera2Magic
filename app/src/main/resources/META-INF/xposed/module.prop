@@ -1,0 +1,4 @@
+id=com.nothing.camera2magic
+minApiVersion=101
+targetApiVersion=101
+staticScope=false
