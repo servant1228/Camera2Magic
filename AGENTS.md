@@ -26,7 +26,7 @@
 | SDK | compileSdk 37（release DSL），minSdk 33，targetSdk 36 |
 | NDK | 29.0.14206865（CMake 默认关闭，见“构建规范”） |
 | UI | Jetpack Compose + **Miuix 0.9.3**（HyperOS 风格组件库） |
-| 导航 | androidx.navigation3 1.1.4（`Route` 为 @Serializable sealed 层级） |
+| 导航 | androidx.navigation3 1.1.4（`Route` 为 @Serializable sealed 层级）+ `miuix-navigation3-ui`（随 Miuix 0.9.3） |
 | 播放器 | media3-exoplayer 1.10.0（`ExoPlayer` + 自定义 `DataSource`） |
 | Hook 框架 | libxposed：`compileOnly api:102.0.0` + `implementation service:102.0.0` |
 | 序列化 | kotlinx.serialization-json 1.7.3（导航栈持久化） |
@@ -41,7 +41,7 @@ Camera2Magic/
 │   ├── cam2magic.keystore           # release 签名（密码 camera2，见构建规范）
 │   ├── proguard-rules.pro           # keep native 方法与 com.nothing.camera2magic.**
 │   └── src/main/
-│       ├── AndroidManifest.xml      # 单 Activity，QUERY_ALL_PACKAGES
+│       ├── AndroidManifest.xml      # 单 Activity，QUERY_ALL_PACKAGES + FileProvider
 │       ├── java/com/nothing/camera2magic/
 │       │   ├── MagicHook.kt         # Xposed 入口（java_init.list）
 │       │   ├── GlobalState.kt       # 跨进程内存态（appContext/processName/activityCount）
@@ -55,11 +55,15 @@ Camera2Magic/
 │       │   │   ├── MagicDataSource.kt / MagicMedia.kt / SourceManager.kt
 │       │   │   └── HookManager.kt  # safeHook 工具接口
 │       │   ├── ui/                  # Compose UI（screen/component/navigation3/theme/util）
-│       │   ├── utils/Dog.kt         # 日志单例（StateFlow + logcat 监听）
+│       │   ├── utils/Dog.kt         # 日志单例（StateFlow + logcat 桥接监听）
+│       │   ├── utils/MediaPathResolver.kt  # content:// 媒体解析为可展示路径
 │       │   ├── view/SpotlightView.kt
 │       │   └── viewmodel/           # ConfigRepository + 4 个 ViewModel + Factory + CompositionLocals
+│       ├── res/values{, -zh-rCN}/strings.xml  # 英文 + 中文文案
+│       ├── res/xml/file_paths.xml   # FileProvider 导出路径
 │       ├── jniLibs/{arm64-v8a,armeabi-v7a}/libcamera3.so   # 预编译原生库
 │       └── resources/META-INF/xposed/  # module.prop / java_init.list / native_init.list / scope.list
+├── app/src/test/                   # 单元测试（LogcatParserTest 等）
 ├── build.gradle / settings.gradle / gradle.properties / gradle/libs.versions.toml
 └── local.properties                # 本机 SDK 路径，不入库
 ```
@@ -103,11 +107,16 @@ flowchart LR
    首个 Activity 启动时 `refreshAndDispatch()`（重新解析媒体、可弹 Toast）；
 2. `Camera1Hooker` / `Camera2Hooker`：把应用真实预览 Surface 换成 `BlackHole`
    假 Surface，原 Surface 通过 `NativeBridge.addRenderTarget` 交给原生引擎；
-3. 同一时刻 `Camera3.start` 用 ExoPlayer 播放所选视频（或 Canvas 以 ~30fps
+3. 同一时刻 `Camera3.start` 用 ExoPlayer 播放所选视频/RTSP（或 Canvas 以 ~30fps
    绘制静态图）到 OES 纹理 → `SurfaceTexture` → 原生引擎注入到目标 Surface；
+   `main_adapt_landscape`（横屏适配）开启时交换上报帧宽高并把图片 EXIF 方向烘焙进
+   像素；`main_manually_rotate` 变化时通过改写 `updateCameraBaseData` 的
+   sensorOri/displayOri 实时生效；
 4. `ImageReaderHooker`：`format=256`(JPEG) 拍照时用所选图片按原始尺寸缩放替换
-   （保留 EXIF，按字节数二分搜索压缩质量）；`format=35`(YUV) 走
-   `overwriteYuvBuffer` 原生覆盖；
+   （保留 EXIF，按字节数二分搜索压缩质量，JPEG 结果按媒体+开关缓存）；
+   `format=35`(YUV) 走 `overwriteYuvBuffer` 原生覆盖；`main_fix_photo_rotation`
+   开启时忽略相机 EXIF、按媒体自身方向烘焙旋转；Camera1 拍照路径同样支持
+   （关闭时走原生 `overwriteJPEGBytes`）；
 5. `WebRTCHooker`：解析 `org.webrtc.Logging.nativeLog` 中的 rotation 消息同步旋转，
    会话停止时释放 Camera3 与渲染目标。
 
@@ -124,20 +133,21 @@ flowchart LR
 
 | 类 | 职责 | 关键要点 |
 | --- | --- | --- |
-| `MagicHook` | Xposed 入口 | 加载 .so、初始化 SourceManager、装配 3 个 Hooker（Camera1/Camera2/ImageReader/WebRTC）、前台 Toast |
+| `MagicHook` | Xposed 入口 | 加载 .so、初始化 SourceManager、装配 4 个 Hooker（Camera1/Camera2/ImageReader/WebRTC）、前台 Toast |
 | `GlobalState` | 进程内全局态 | `appContext`、`processName`、`activityCount`（@Volatile） |
-| `SourceManager` | 配置解析中心 | 所有开关与媒体键的单一读取点；`readyForHook = moduleEnabled && appHookEnabled` |
+| `SourceManager` | 配置解析中心 | 所有开关与媒体键的单一读取点；`readyForHook = moduleEnabled && appHookEnabled`；监听 `main_manually_rotate` / `main_fix_photo_rotation` / `main_adapt_landscape` 变化并实时重发原生 |
 | `ConfigRepository` | 宿主侧配置读写 | 每个 setter 同时写本地 + 远程；按包配置、媒体上传、scope 查询 |
 | `HookManager` | Hook 基础设施 | `safeHook` 去重（WeakHashMap 集合）+ `runCatching` 容错 |
 | `Camera1Hooker` | 老版 Camera API | open/setPreview*/startPreview/stop/release/回调/拍照 |
 | `Camera2Hooker` | Camera2 API | openCamera、createCaptureSession*、add/removeTarget、Surface 替换 |
 | `ImageReaderHooker` | 拍照/取帧替换 | JPEG 替换 + EXIF 保留 + 质量二分；YUV 原生覆盖；JPEG 缓存 |
 | `WebRTCHooker` | WebRTC 适配 | 解析 rotation 日志、会话结束清理 |
-| `Camera3` / `Camera3Extended` | 渲染端 | ExoPlayer/Canvas → OES 纹理；单例 HandlerThread("Camera3") |
+| `Camera3` / `Camera3Extended` | 渲染端 | ExoPlayer/Canvas → OES 纹理；横屏适配交换帧宽高/烘焙 EXIF；拍照时切自然尺寸；单例 HandlerThread("Camera3") |
 | `MagicDataSource` | media3 DataSource | 基于 ParcelFileDescriptor 读取，支持 seek |
 | `NativeBridge` | JNI 桥 | 全部 `external fun` 的声明（见下） |
 | `BlackHole` | 假 Surface 池 | `WeakHashMap<Surface, BH>`，替换真实预览面；`clear()` 统一释放 |
-| `Dog` | 日志 | 全局 TAG `VCX`；`StateFlow<List<LogEntry>>`（上限 1000 条）；可启动 logcat 监听 |
+| `MediaPathResolver` | 宿主侧路径展示 | 把 content:// 媒体解析为可展示的真实路径（MediaStore DATA / RELATIVE_PATH） |
+| `Dog` | 日志 | 全局 TAG `VCX`；宿主进程内存缓冲 + logcat 桥接（root 时走 su），`StateFlow<List<LogEntry>>` 上限 1000 条；logcat 行解析为纯 JVM 函数并带单元测试 |
 
 `NativeBridge` 的 JNI 函数清单：`createOESTexture`、`notifyFrameAvailable`、
 `setSurfaceTexture`、`getSurfaceInfo`、`updateCameraBaseData`、`updateManualRotation`、
@@ -150,8 +160,11 @@ flowchart LR
 | 键 | 类型/默认 | 含义 |
 | --- | --- | --- |
 | `main_module_enabled` | Boolean=true | 模块总开关 |
-| `main_play_sound` / `main_enable_log` / `main_show_toast` | Boolean | 播放声音 / 日志 / Toast |
+| `main_play_sound` / `main_enable_log` / `main_show_toast` | Boolean=false/false/true | 播放声音 / 日志 / Toast |
 | `main_compress_jpeg` | Boolean=true | 拍照替换时压缩 JPEG |
+| `main_inject_menu` | Boolean=false | 向目标相机应用注入菜单（当前仅宿主 UI 开关，Hook 侧尚未实现） |
+| `main_fix_photo_rotation` | Boolean=false | 拍照旋转修正：忽略相机 EXIF，按媒体自身方向烘焙 |
+| `main_adapt_landscape` | Boolean=false | 横屏适配：预览/拍照按媒体自然方向显示 |
 | `main_manually_rotate` | Int=0 | 手动旋转（0/90/180/270 索引） |
 | `media_source` | Int=0 | 0 本地，1 网络 |
 | `local_media_type` | Int=0 | 0 视频，1 图片 |
@@ -161,8 +174,9 @@ flowchart LR
 | `hook_enabled_packages` | String(逗号分隔) | 启用 Hook 的包集合 |
 | `app_hook_<pkg>` | Boolean=true | 单应用 Hook 开关 |
 | `app_media_mode_<pkg>` | global/photo/video | 单应用媒体模式 |
+| `app_photo_uri_<pkg>` / `app_video_uri_<pkg>` | String? | 单应用在宿主侧选择的持久化 URI（AppConfig 页面） |
 | `app_remote_photo_<pkg>` / `app_remote_video_<pkg>` | String? | 单应用覆盖的媒体文件 |
-| `theme_*` | 见 `ThemeConfig` | 主题全部键（dark_mode/pure_black/monet/palette/accent/blur/floating_bar/bottom_bar_mode/density_scale/predictive_back） |
+| `theme_*` | 见 `ThemeConfig` | 主题全部键（dark_mode/pure_black/monet/palette/accent/blur/floating_bar/floating_bottom_bar_style/bottom_bar_mode/density_scale/predictive_back） |
 | `main_hook_mode` | "Camera2" | Hook 模式（UI 展示用） |
 
 ## 7. 构建与发布规范
@@ -194,8 +208,9 @@ flowchart LR
 
 - `versionName = 1.1.2`（`major.minor.patch` 手写常量）；
 - `versionCode = versionCodeOffset(0) + git 提交数`（`git rev-list --count HEAD`，
-  失败时回退为 1）。**注意：当前仓库根目录（C:\）的 git 仓库没有任何提交**，因此
-  versionCode 实际为 1；若要发布递增，需要先在项目内建立有效 git 历史。
+  失败时回退为 1）。项目内已建立 git 仓库（`C:\Users\fdhyr\Camera2Magic`），
+  每次发布前新增提交即可让 versionCode 递增（截至本文档更新时共 2 次提交，
+  versionCode=2）。
 
 ### 7.4 依赖与仓库
 
@@ -234,6 +249,11 @@ flowchart LR
 ## 9. 已知坑与遗留问题（改动前必读）
 
 - **RTSP 播放已实现**（依赖 `media3-exoplayer-rtsp`），但宿主 UI 还没有 RTSP 地址输入入口，目前仅能通过 `network_rtsp_uri` 配置。
+- `main_inject_menu`（注入菜单）目前只是宿主 UI 上的开关，Hook 侧没有对应实现；不要把它当作已生效的功能。
+- `NativeBridge.updateManualRotation` 在预编译 `libcamera3.so` 中没有实际读取点；
+  手动旋转/横屏适配通过 `SourceManager.applyManualRotationToNative()` 改写
+  `updateCameraBaseData` 的 sensorOri/displayOri 生效，改动旋转逻辑时不要只调
+  `updateManualRotation`。
 - `NetworkHooker`（HttpURLConnection/OkHttp 网络上传替换）与 `WorkMode` 枚举已删除：前者不再需要，后者无任何使用点。
 - `MagicHook` 只在 `isFirstPackage` 时装配 Hook；scope 目前仅 `tv.danmaku.bili`，
   新增作用域包后需同步修改 `scope.list` 与 `hook_enabled_packages` 逻辑。
@@ -245,8 +265,7 @@ flowchart LR
   同时打开时共享同一渲染端，修改需谨慎。
 - `app/build.gradle` 顶部仍保留被注释的 `externalNativeBuild` 与 `abiFilters`；
   `buildNative` 现在会在缺少 `src/main/cpp/CMakeLists.txt` 时直接报错提示，快速构建不受影响。
-- 当前 git 仓库位于 `C:\` 根（非项目目录）且无提交；若需要版本管理，建议在项目内
-  `git init` 并提交，`versionCode` 才会按提交数递增。
+- 项目 git 仓库位于项目目录内，已初始化并有提交；`versionCode` 随提交数递增。
 
 ## 10. 改动 Checklist（AI 自检）
 
@@ -255,4 +274,5 @@ flowchart LR
 - [ ] 新增 UI：Miuix 组件、字符串进 `strings.xml`（en + zh-rCN）、导航走 `Route` + `Navigator`、ViewModel 经 `ViewModelFactory` 注册。
 - [ ] 改动原生：更新 `NativeBridge` 声明、重新运行 `buildNative` 生成 `jniLibs`、检查 proguard keep。
 - [ ] 构建验证：`.\gradlew.bat assembleDebug` 至少能过编译；改动签名/版本/ABI 时核对 `app/build.gradle` 常量。
+- [ ] 改动 `Dog` / logcat 解析等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
 - [ ] 编码检查：所有改动文件保持 UTF-8，中文注释在 UTF-8 读取下无乱码。
