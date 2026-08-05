@@ -19,6 +19,8 @@ data class SettingsUiState(
     val injectMenu: Boolean = false,
     val manuallyRotate: Int = 0,
     val compressJpeg: Boolean = true,
+    val fixPhotoRotation: Boolean = false,
+    val adaptLandscape: Boolean = false,
     val themeConfig: ThemeConfig = ThemeConfig(),
 )
 
@@ -42,6 +44,8 @@ class SettingsViewModel(
             injectMenu = repository.injectMenu,
             manuallyRotate = repository.manuallyRotate,
             compressJpeg = repository.compressJpeg,
+            fixPhotoRotation = repository.fixPhotoRotation,
+            adaptLandscape = repository.adaptLandscape,
             themeConfig = readThemeConfig(repository),
         )
     }
@@ -80,5 +84,15 @@ class SettingsViewModel(
     fun onCompressJpegChanged(value: Boolean) {
         repository.compressJpeg = value
         _uiState.update { it.copy(compressJpeg = value) }
+    }
+
+    fun onFixPhotoRotationChanged(value: Boolean) {
+        repository.fixPhotoRotation = value
+        _uiState.update { it.copy(fixPhotoRotation = value) }
+    }
+
+    fun onAdaptLandscapeChanged(value: Boolean) {
+        repository.adaptLandscape = value
+        _uiState.update { it.copy(adaptLandscape = value) }
     }
 }

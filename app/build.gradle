@@ -206,8 +206,8 @@ tasks.register("buildNative", Copy) {
 }
 
 dependencies {
-    compileOnly 'io.github.libxposed:api:101.0.1'
-    implementation 'io.github.libxposed:service:101.0.0'
+    compileOnly 'io.github.libxposed:api:102.0.0'
+    implementation 'io.github.libxposed:service:102.0.0'
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
     implementation "com.google.accompanist:accompanist-permissions:0.37.3"
@@ -229,8 +229,6 @@ dependencies {
     implementation "androidx.compose.material:material-icons-extended"
 
     implementation libs.androidx.compose.foundation
-    implementation libs.androidx.compose.adaptive
-    implementation libs.androidx.material3
 
     implementation libs.androidx.core.ktx
     implementation libs.androidx.lifecycle.runtime.ktx
@@ -239,7 +237,6 @@ dependencies {
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.ui.graphics
     implementation libs.androidx.compose.ui.tooling.preview
-    implementation libs.androidx.compose.material3
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core

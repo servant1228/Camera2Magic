@@ -45,7 +45,9 @@ object BlackHole {
 
     fun clear() {
         dummyTexId = 0x100
-        _oab.values.forEach { bh ->
+        _oab.forEach { (origin, bh) ->
+            // 同步移除原生渲染目标，避免原生引擎继续往已 release 的 Surface 上渲染
+            runCatching { NativeBridge.removeRenderTarget(origin) }
             bh?.release()
         }
         _oab.clear()

@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -48,6 +49,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -81,6 +83,7 @@ data class ScopeApp(val packageName: String, val label: String, val isSystem: Bo
 
 @Composable
 fun ScopeScreen(
+    bottomPadding: Dp = 0.dp,
     onNavigateAppConfig: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -230,6 +233,7 @@ fun ScopeScreen(
                             top = innerPadding.calculateTopPadding(),
                             start = innerPadding.calculateStartPadding(layoutDirection),
                             end = innerPadding.calculateEndPadding(layoutDirection),
+                            bottom = bottomPadding,
                         ),
                     ) {
                         item { Spacer(Modifier.height(12.dp)) }
@@ -251,7 +255,7 @@ fun ScopeScreen(
                                 ScopeAppCard(app = app, onClick = { onNavigateAppConfig(app.packageName) })
                             }
                         }
-                        item { Spacer(Modifier.height(24.dp).navigationBarsPadding()) }
+                        item { Spacer(Modifier.height(24.dp)) }
                     }
                 }
             }
@@ -261,6 +265,8 @@ fun ScopeScreen(
 
 @Composable
 private fun ScopeAppCard(app: ScopeApp, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -272,12 +278,15 @@ private fun ScopeAppCard(app: ScopeApp, onClick: () -> Unit) {
         insideMargin = PaddingValues(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val icon = loadAppIcon(LocalContext.current, app.packageName)
+            val icon = remember(app.packageName, iconSizePx) {
+                loadAppIcon(context, app.packageName, iconSizePx)
+            }
             if (icon != null) {
                 Image(
                     bitmap = icon.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier.padding(end = 12.dp).size(48.dp),
+                    filterQuality = FilterQuality.High,
                 )
             } else {
                 Box(Modifier.padding(end = 12.dp).size(48.dp))
@@ -325,11 +334,11 @@ private fun loadScopeApps(context: android.content.Context, scopePackages: List<
     }.getOrDefault(emptyList())
 }
 
-internal fun loadAppIcon(context: android.content.Context, packageName: String): Bitmap? {
+internal fun loadAppIcon(context: android.content.Context, packageName: String, sizePx: Int = 96): Bitmap? {
     return runCatching {
         val drawable = context.packageManager.getApplicationIcon(packageName)
-        Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888).also { bitmap ->
-            drawable.setBounds(0, 0, 96, 96)
+        Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888).also { bitmap ->
+            drawable.setBounds(0, 0, sizePx, sizePx)
             drawable.draw(Canvas(bitmap))
         }
     }.getOrNull()

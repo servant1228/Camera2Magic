@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.core.net.toUri
 import com.nothing.camera2magic.utils.Dog
+import com.nothing.camera2magic.utils.MediaPathResolver
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentMapOf
@@ -29,6 +30,7 @@ data class SpotlightUiState(
     val selectedMediaSource: MediaSource = MediaSource.LOCAL,
     val currentType: MediaType = MediaType.VIDEO,
     val thumbnails: PersistentMap<MediaType, Bitmap?> = persistentMapOf(),
+    val displayPaths: PersistentMap<MediaType, String?> = persistentMapOf(),
     val processingMedia: PersistentSet<MediaType> = persistentSetOf()
 )
 
@@ -132,13 +134,12 @@ class SpotlightViewModel(
             }
         }
         updateThumbnailState(type, null)
+        updateState { it.copy(displayPaths = it.displayPaths.put(type, null)) }
     }
 
     fun getMediaPath(type: MediaType): String? {
-        return when (type) {
-            MediaType.VIDEO -> repository.videoUri
-            MediaType.IMAGE -> repository.imageUri
-        }
+        return _uiState.value.displayPaths[type]
+            ?: getMediaUri(type)?.toString()
     }
 
     fun performHealthCheckAndRefresh() {
@@ -195,6 +196,8 @@ class SpotlightViewModel(
             if (thumbnail != null) {
                 updateThumbnailState(type, thumbnail)
                 saveMediaUri(type, targetUri.toString())
+                val displayPath = MediaPathResolver.resolveDisplayPath(app, targetUri)
+                updateState { it.copy(displayPaths = it.displayPaths.put(type, displayPath)) }
             } else {
                 updateThumbnailState(type, null)
                 clearMediaBy(type)

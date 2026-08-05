@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,6 +69,7 @@ fun SettingsScreenContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
                 top = innerPadding.calculateTopPadding(),
+                bottom = bottomPadding,
             ),
         ) {
             item { SmallTitle(text = stringResource(R.string.settings_general)) }
@@ -90,6 +90,14 @@ fun SettingsScreenContent(
                         title = stringResource(R.string.quick_entry_manually_rotate),
                         summary = stringResource(R.string.quick_entry_manually_rotate_summary),
                         onSelectedIndexChange = { viewModel.onManuallyRotateChanged(it) },
+                    )
+                },
+                CardItem("adaptLandscape") {
+                    SwitchPreference(
+                        title = stringResource(R.string.quick_entry_adapt_landscape),
+                        summary = stringResource(R.string.quick_entry_adapt_landscape_summary),
+                        checked = uiState.adaptLandscape,
+                        onCheckedChange = { viewModel.onAdaptLandscapeChanged(it) },
                     )
                 },
                 CardItem("injectMenu") {
@@ -116,6 +124,14 @@ fun SettingsScreenContent(
                         onCheckedChange = { viewModel.onCompressJpegChanged(it) },
                     )
                 },
+                CardItem("fixPhotoRotation") {
+                    SwitchPreference(
+                        title = stringResource(R.string.quick_entry_fix_photo_rotation),
+                        summary = stringResource(R.string.quick_entry_fix_photo_rotation_summary),
+                        checked = uiState.fixPhotoRotation,
+                        onCheckedChange = { viewModel.onFixPhotoRotationChanged(it) },
+                    )
+                },
                 CardItem("enableLog") {
                     SwitchPreference(
                         title = stringResource(R.string.quick_entry_enable_log),
@@ -133,7 +149,7 @@ fun SettingsScreenContent(
                 },
             ))
 
-            item { Spacer(Modifier.height(24.dp).navigationBarsPadding()) }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }

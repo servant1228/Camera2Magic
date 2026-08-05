@@ -254,8 +254,8 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                 ) { page ->
                     when (page) {
                         0 -> HomePage(bottomPadding = bottomPadding, onNavigateScope = { mainPagerState.animateToPage(2) })
-                        1 -> LogPage()
-                        2 -> ScopePage()
+                        1 -> LogPage(bottomPadding = bottomPadding)
+                        2 -> ScopePage(bottomPadding = bottomPadding)
                         3 -> SettingsScreenContent(
                             viewModel = settingsViewModel,
                             onThemeConfigChanged = onThemeConfigChanged,
@@ -477,7 +477,7 @@ private fun HomePage(bottomPadding: Dp = 0.dp, onNavigateScope: () -> Unit = {})
 }
 
 @Composable
-private fun LogPage() {
+private fun LogPage(bottomPadding: Dp = 0.dp) {
     val factory = LocalViewModelFactory.current
     val homeViewModel: HomeViewModel = viewModel(factory = factory)
     val logViewModel: LogViewModel = viewModel(factory = factory)
@@ -485,6 +485,7 @@ private fun LogPage() {
     val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     LogScreen(
         viewModel = logViewModel,
+        bottomPadding = bottomPadding,
         enableLog = settingsUiState.enableLog,
         onEnableLog = {
             homeViewModel.onEnableLogToggled()
@@ -494,10 +495,11 @@ private fun LogPage() {
 }
 
 @Composable
-private fun ScopePage() {
+private fun ScopePage(bottomPadding: Dp = 0.dp) {
     val repository = LocalConfigRepository.current
     val navigator = LocalNavigator.current
     ScopeScreen(
+        bottomPadding = bottomPadding,
         onNavigateAppConfig = { pkg -> navigator.push(Route.AppConfig(pkg)) },
     )
 }

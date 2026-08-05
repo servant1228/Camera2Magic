@@ -6,7 +6,7 @@
 ## 1. 项目是什么
 
 **Camera2 Magic（包名 `com.nothing.camera2magic`，产物名 CAM2Magic）** 是一个基于
-**LSPosed / libxposed（API 101）** 的 **Android 虚拟摄像头模块**：
+**LSPosed / libxposed（API 102）** 的 **Android 虚拟摄像头模块**：
 
 - 用户在宿主 App 中选择本地视频 / 图片作为“虚拟摄像头”内容；
 - 当被 Hook 的应用（scope 当前只有 `tv.danmaku.bili` 哔哩哔哩）调用
@@ -25,10 +25,10 @@
 | Kotlin | 2.4.10（jvmTarget 11，官方代码风格） |
 | SDK | compileSdk 37（release DSL），minSdk 33，targetSdk 36 |
 | NDK | 29.0.14206865（CMake 默认关闭，见“构建规范”） |
-| UI | Jetpack Compose + **Miuix 0.9.3**（HyperOS 风格组件库）+ Material3 桥接 |
+| UI | Jetpack Compose + **Miuix 0.9.3**（HyperOS 风格组件库） |
 | 导航 | androidx.navigation3 1.1.4（`Route` 为 @Serializable sealed 层级） |
 | 播放器 | media3-exoplayer 1.10.0（`ExoPlayer` + 自定义 `DataSource`） |
-| Hook 框架 | libxposed：`compileOnly api:101.0.1` + `implementation service:101.0.0` |
+| Hook 框架 | libxposed：`compileOnly api:102.0.0` + `implementation service:102.0.0` |
 | 序列化 | kotlinx.serialization-json 1.7.3（导航栈持久化） |
 | 其他 | hiddenapibypass 6.1、accompanist-permissions、kotlinx-collections-immutable |
 
@@ -115,7 +115,7 @@ flowchart LR
 
 | 文件 | 内容 | 含义 |
 | --- | --- | --- |
-| `module.prop` | `id=com.nothing.camera2magic`，min/targetApiVersion=101 | LSPosed 模块声明 |
+| `module.prop` | `id=com.nothing.camera2magic`，min/targetApiVersion=102 | LSPosed 模块声明 |
 | `java_init.list` | `com.nothing.camera2magic.MagicHook` | Java 入口类 |
 | `native_init.list` | `camera3` | 原生初始化入口（`System.loadLibrary("camera3")`） |
 | `scope.list` | `tv.danmaku.bili` | 静态作用域：仅哔哩哔哩（`staticScope=false`） |
@@ -224,7 +224,7 @@ flowchart LR
 7. `NativeBridge` 是 JNI 契约的唯一来源：新增/修改 native 函数时，Java 声明与
    `libcamera3.so` 导出必须同步，否则运行期 `UnsatisfiedLinkError`。
 8. UI 使用 Miuix 组件（`top.yukonga.miuix.kmp.*`），主题基于
-   `ThemeController` + `MiuixTheme`，并由 `Camera2MagicTheme` 桥接 Material3 色板；
+   `ThemeController` + `MiuixTheme`（由 `Camera2MagicTheme` 统一装载）；
    新增页面文案进 `res/values/strings.xml`（英文）+ `values-zh-rCN/strings.xml`（中文）。
 9. 导航：新增页面在 `Route` sealed 层级加 @Serializable 条目，`Navigator.push/pop`，
    导航栈经 kotlinx.serialization JSON 持久化（`NavBackStackSaver`）。

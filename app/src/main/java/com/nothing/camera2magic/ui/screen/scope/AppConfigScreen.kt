@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,10 +45,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,14 +58,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.nothing.camera2magic.R
 import com.nothing.camera2magic.ui.component.BlurredBar
 import com.nothing.camera2magic.ui.component.CardSegment
 import com.nothing.camera2magic.ui.component.ListPopupDefaults
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
+import com.nothing.camera2magic.utils.MediaPathResolver
 import com.nothing.camera2magic.viewmodel.ConfigRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.Icon
@@ -113,6 +119,23 @@ fun AppConfigScreen(
     var mediaMode by remember { mutableStateOf(initMode) }
     var photoUri by remember { mutableStateOf(repository.getAppPhotoUri(packageName)) }
     var videoUri by remember { mutableStateOf(repository.getAppVideoUri(packageName)) }
+    var photoDisplayPath by remember { mutableStateOf<String?>(null) }
+    var videoDisplayPath by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(photoUri) {
+        photoDisplayPath = photoUri?.let { uriString ->
+            withContext(Dispatchers.IO) {
+                MediaPathResolver.resolveDisplayPath(context, uriString.toUri())
+            }
+        }
+    }
+    LaunchedEffect(videoUri) {
+        videoDisplayPath = videoUri?.let { uriString ->
+            withContext(Dispatchers.IO) {
+                MediaPathResolver.resolveDisplayPath(context, uriString.toUri())
+            }
+        }
+    }
 
     var pendingMediaMode by remember { mutableStateOf<MediaMode?>(null) }
     val pickMediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -196,6 +219,7 @@ fun AppConfigScreen(
                         mediaMode = mediaMode,
                         onMediaModeChange = { mediaMode = it; repository.setAppMediaMode(packageName, it.name.lowercase()) },
                         photoUri = photoUri,
+                        photoDisplayPath = photoDisplayPath,
                         onPhotoUriChange = {
                             if (it == null) {
                                 repository.getAppRemotePhoto(packageName)?.let { fn -> repository.deleteRemoteMedia(fn) }
@@ -204,6 +228,7 @@ fun AppConfigScreen(
                             photoUri = it; repository.setAppPhotoUri(packageName, it)
                         },
                         videoUri = videoUri,
+                        videoDisplayPath = videoDisplayPath,
                         onVideoUriChange = {
                             if (it == null) {
                                 repository.getAppRemoteVideo(packageName)?.let { fn -> repository.deleteRemoteMedia(fn) }
@@ -246,12 +271,16 @@ private fun AppConfigInner(
     mediaMode: MediaMode,
     onMediaModeChange: (MediaMode) -> Unit,
     photoUri: String?,
+    photoDisplayPath: String?,
     onPhotoUriChange: (String?) -> Unit,
     videoUri: String?,
+    videoDisplayPath: String?,
     onVideoUriChange: (String?) -> Unit,
     pendingMediaMode: MediaMode?,
     onPickMedia: (MediaMode) -> Unit,
 ) {
+    val context = LocalContext.current
+    val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
     Column {
         Card(
             modifier = Modifier
@@ -261,12 +290,15 @@ private fun AppConfigInner(
             insideMargin = PaddingValues(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val icon = loadAppIcon(LocalContext.current, packageName)
+                val icon = remember(packageName, iconSizePx) {
+                    loadAppIcon(context, packageName, iconSizePx)
+                }
                 if (icon != null) {
                     Image(
                         bitmap = icon.asImageBitmap(),
                         contentDescription = null,
                         modifier = Modifier.padding(end = 12.dp).size(48.dp),
+                        filterQuality = FilterQuality.High,
                     )
                 } else {
                     Box(Modifier.padding(end = 12.dp).size(48.dp))
@@ -338,7 +370,7 @@ private fun AppConfigInner(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.app_config_select_photo), fontSize = textStyles.body2.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
                         Text(
-                            photoUri ?: stringResource(R.string.app_config_no_media),
+                            photoDisplayPath ?: photoUri ?: stringResource(R.string.app_config_no_media),
                             fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -366,7 +398,7 @@ private fun AppConfigInner(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.app_config_select_video), fontSize = textStyles.body2.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
                         Text(
-                            videoUri ?: stringResource(R.string.app_config_no_media),
+                            videoDisplayPath ?: videoUri ?: stringResource(R.string.app_config_no_media),
                             fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -454,5 +486,3 @@ private fun TopBar(
         )
     }
 }
-
-

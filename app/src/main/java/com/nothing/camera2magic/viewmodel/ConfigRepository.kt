@@ -162,6 +162,16 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean("main_compress_jpeg", true)
         set(value) = save("main_compress_jpeg", value)
 
+    /** 拍照时忽略原相机 EXIF 方向，让照片保持媒体自身方向 */
+    var fixPhotoRotation: Boolean
+        get() = prefs.getBoolean("main_fix_photo_rotation", false)
+        set(value) = save("main_fix_photo_rotation", value)
+
+    /** 横屏适配：让横屏视频/照片按媒体自身方向显示，抵消原生引擎的传感器旋转 */
+    var adaptLandscape: Boolean
+        get() = prefs.getBoolean("main_adapt_landscape", false)
+        set(value) = save("main_adapt_landscape", value)
+
     var mediaSource: Int
         get() = prefs.getInt("media_source", 0)
         set(value) {

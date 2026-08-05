@@ -2,9 +2,6 @@ package com.nothing.camera2magic.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -50,44 +47,6 @@ fun Camera2MagicTheme(
         ThemeController(mode, lightColors = customLight, darkColors = customDark)
     }
 
-    val miuixColors = controller.currentColors()
-
-    val materialColorScheme = remember(miuixColors) {
-        if (darkTheme) darkColorScheme(
-            primary = miuixColors.primary,
-            onPrimary = miuixColors.onPrimary,
-            primaryContainer = miuixColors.primaryContainer,
-            onPrimaryContainer = miuixColors.onPrimaryContainer,
-            surface = miuixColors.surface,
-            onSurface = miuixColors.onSurface,
-            surfaceVariant = miuixColors.surfaceVariant,
-            onSurfaceVariant = miuixColors.onSurfaceSecondary,
-            outline = miuixColors.outline,
-            outlineVariant = miuixColors.outline,
-            background = miuixColors.background,
-            onBackground = miuixColors.onBackground,
-            surfaceContainerHighest = miuixColors.surfaceContainerHighest,
-            surfaceContainerHigh = miuixColors.surfaceContainerHigh,
-            surfaceContainer = miuixColors.surfaceContainer,
-        ) else lightColorScheme(
-            primary = miuixColors.primary,
-            onPrimary = miuixColors.onPrimary,
-            primaryContainer = miuixColors.primaryContainer,
-            onPrimaryContainer = miuixColors.onPrimaryContainer,
-            surface = miuixColors.surface,
-            onSurface = miuixColors.onSurface,
-            surfaceVariant = miuixColors.surfaceVariant,
-            onSurfaceVariant = miuixColors.onSurfaceSecondary,
-            outline = miuixColors.outline,
-            outlineVariant = miuixColors.outline,
-            background = miuixColors.background,
-            onBackground = miuixColors.onBackground,
-            surfaceContainerHighest = miuixColors.surfaceContainerHighest,
-            surfaceContainerHigh = miuixColors.surfaceContainerHigh,
-            surfaceContainer = miuixColors.surfaceContainer,
-        )
-    }
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -99,13 +58,11 @@ fun Camera2MagicTheme(
     }
 
     MiuixTheme(controller = controller) {
-        MaterialTheme(colorScheme = materialColorScheme) {
-            CompositionLocalProvider(
-                LocalAppDarkMode provides darkTheme,
-                LocalDensity provides Density(LocalDensity.current.density * themeConfig.densityScale, LocalDensity.current.fontScale),
-            ) {
-                content()
-            }
+        CompositionLocalProvider(
+            LocalAppDarkMode provides darkTheme,
+            LocalDensity provides Density(LocalDensity.current.density * themeConfig.densityScale, LocalDensity.current.fontScale),
+        ) {
+            content()
         }
     }
 }

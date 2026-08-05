@@ -76,12 +76,8 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
         val rotation = wm.defaultDisplay.rotation
         val sensorOri = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
         val facingFront = characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
-        var displayOri = rotation * 90
-        if (SM.manuallyRotate > 0) {
-            val angles = intArrayOf(0, 90, 180, 270)
-            displayOri = angles[SM.manuallyRotate.coerceIn(0, 3)]
-        }
-        NB.updateCameraBaseData(2, facingFront, sensorOri, displayOri, processName)
+        SM.rememberCameraBaseData(2, facingFront, sensorOri, rotation * 90, processName)
+        SM.applyManualRotationToNative()
         activatedCamera = WeakReference(this)
     }
 
@@ -103,6 +99,8 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
             val camera = chain.args[0] as CameraDevice
             if (camera.isActiveRef) {
                 camera3Map[camera]?.stop()
+                extraRenderTargets.forEach { runCatching { NB.removeRenderTarget(it) } }
+                extraRenderTargets.clear()
                 BlackHole.clear()
                 Dog.w(TAG, "API[2] close camera: ${camera.shortId}", SM.enableLog)
             }
@@ -150,10 +148,8 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
                 camera3Map[camera] = camera3
                 camera3.start(magic, it)
             }
-            if (SM.manuallyRotate > 0) {
-                val angles = intArrayOf(0, 90, 180, 270)
-                NB.updateManualRotation(angles[SM.manuallyRotate.coerceIn(0, 3)])
-            }
+            // 会话配置完成时重新下发一次 base data，确保手动旋转生效
+            SM.applyManualRotationToNative()
             return@intercept chain.proceed()
         }
     }

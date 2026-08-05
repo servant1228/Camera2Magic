@@ -28,8 +28,8 @@ class WebRTCHooker(val magic: MagicHook, param: PackageReadyParam) : HookManager
                 Camera3().stop()
                 NB.clearTargets()
                 BlackHole.clear()
-                manualRotation = 0
-                NB.updateManualRotation(0)
+                manualRotation = SourceManager.manuallyRotate
+                SourceManager.applyManualRotationToNative()
             }
             chain.proceed()
         }
@@ -47,6 +47,14 @@ class WebRTCHooker(val magic: MagicHook, param: PackageReadyParam) : HookManager
     }
 
     private fun handleMessage(msg: String) {
+        // 手动旋转优先：设置了全局手动旋转时，不采用 WebRTC 自动旋转
+        if (SourceManager.manuallyRotate > 0) {
+            if (manualRotation != SourceManager.manuallyRotate) {
+                manualRotation = SourceManager.manuallyRotate
+                SourceManager.applyManualRotationToNative()
+            }
+            return
+        }
         val matchResult = ROTATION_REGEX.find(msg)
         matchResult?.let {
             val (_, _, r) = it.destructured
