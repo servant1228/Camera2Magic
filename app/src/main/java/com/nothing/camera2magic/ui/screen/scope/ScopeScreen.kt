@@ -97,7 +97,7 @@ fun ScopeScreen(
         loadScopeApps(context, uiState.scopeAppList, emptyMap())
     }
 
-    val displayedApps = allApps.filter { !it.isSystem }
+    val displayedApps = allApps
 
     val searchLabel = stringResource(R.string.home_scope_apps)
     var searchStatus by remember { mutableStateOf(SearchStatus(label = searchLabel)) }
