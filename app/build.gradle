@@ -61,7 +61,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += ""
-                arguments "-DANDROID_PLATFORM=android-29"
+                arguments "-DANDROID_PLATFORM=android-29", "-DANDROID_STL=c++_static"
             }
         }
 
@@ -119,13 +119,13 @@ android {
         }
     }
 
-    // externalNativeBuild 仅在 buildNative 时启用；同步期间 cpp/ 不存在需注释
-    // externalNativeBuild {
-    //     cmake {
-    //         path file("src/main/cpp/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
+    // externalNativeBuild 现在指向重建的 src/main/cpp/CMakeLists.txt
+    externalNativeBuild {
+        cmake {
+            path file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     buildFeatures {
         compose true

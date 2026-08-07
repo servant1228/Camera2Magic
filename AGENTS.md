@@ -61,15 +61,18 @@ Camera2Magic/
 │       │   └── viewmodel/           # ConfigRepository + 4 个 ViewModel + Factory + CompositionLocals
 │       ├── res/values{, -zh-rCN}/strings.xml  # 英文 + 中文文案
 │       ├── res/xml/file_paths.xml   # FileProvider 导出路径
-│       ├── jniLibs/{arm64-v8a,armeabi-v7a}/libcamera3.so   # 预编译原生库
+│       ├── cpp/                        # ★ 原生源码（CMakeLists.txt + Camera3/YuvConverter/ImageUtils/JniBridge + libjpeg-turbo）
+│       ├── jniLibs/{arm64-v8a}/libcamera3.so   # buildNative 产物（源码在 src/main/cpp）
 │       └── resources/META-INF/xposed/  # module.prop / java_init.list / native_init.list / scope.list
 ├── app/src/test/                   # 单元测试（LogcatParserTest 等）
 ├── build.gradle / settings.gradle / gradle.properties / gradle/libs.versions.toml
+├── docs/reverse/libcamera3/       # 预编译原生库反编译还原成果（报告/重建头文件/Ghidra 伪代码）
 └── local.properties                # 本机 SDK 路径，不入库
 ```
 
-> 注意：`app/src/main/cpp/` **不存在**，`externalNativeBuild` 在 `app/build.gradle` 中被注释，
-> 常规构建使用 `jniLibs` 里的预编译 `.so`。
+> 注意：`app/src/main/cpp/` 已重建（CMakeLists + Camera3/YuvConverter/ImageUtils/JniBridge，
+> 内含静态链入的 `libjpeg-turbo/`）；`externalNativeBuild` 已启用。
+> 常规快速构建仍直接使用 `jniLibs` 里的 `.so`（`buildNative` 可重新编译）。
 
 ## 4. 核心架构与数据流
 
@@ -202,7 +205,9 @@ flowchart LR
 
 `buildNative` 会：删除 `src/main/jniLibs`、`release/`、`.cxx` → 依赖
 `stripReleaseDebugSymbols` → 把 stripped 的 `libcamera3.so` 拷回 `jniLibs`。
-⚠️ 当前仓库缺少 `src/main/cpp/CMakeLists.txt`，此时运行 `buildNative` 会直接抛出明确报错；快速构建（assembleRelease/assembleDebug）不受影响。
+✅ `src/main/cpp/CMakeLists.txt` 已存在；`buildNative` 通过 `ExternalProject_Add`
+先编译 `libjpeg-turbo`（`libturbojpeg.a`），再链接生成 `libcamera3.so`。
+首次构建或改动 CMake 后建议 `gradlew clean buildNative`（避免旧中间产物被拷回）。
 
 ### 7.3 版本号
 
@@ -263,8 +268,12 @@ flowchart LR
   结束时也要清理，否则 Surface 泄漏。
 - `Camera3` 是**单例状态**（companion object 持有 player/surface），多个相机实例
   同时打开时共享同一渲染端，修改需谨慎。
-- `app/build.gradle` 顶部仍保留被注释的 `externalNativeBuild` 与 `abiFilters`；
-  `buildNative` 现在会在缺少 `src/main/cpp/CMakeLists.txt` 时直接报错提示，快速构建不受影响。
+- `externalNativeBuild` 已启用并指向 `src/main/cpp/CMakeLists.txt`；
+  `buildNative` 由源码构建（libjpeg-turbo 3.0.4 静态链入），原始预编译 `.so` 有备份
+  （见反编译报告 evidence/original-so/）。
+- 原生库已从还原成果重建为可编译源码（`app/src/main/cpp/`），JNI 契约与 Kotlin
+  `NativeBridge.kt` 一致；新增或修改 native 行为前先读 `docs/reverse/libcamera3/`
+  报告与 `NativeBridge-JNI.md`（重建头文件是语义参考，实现以 `*.cpp` 为准）。
 - 项目 git 仓库位于项目目录内，已初始化并有提交；`versionCode` 随提交数递增。
 
 ## 10. 改动 Checklist（AI 自检）
