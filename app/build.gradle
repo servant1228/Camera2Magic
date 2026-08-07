@@ -165,6 +165,10 @@ afterEvaluate {
         }.configureEach { task ->
             task.enabled = false
         }
+    } else {
+        // Native 构建模式：合并 jniLibs 前先清掉旧 .so，避免旧产物被拷回
+        tasks.named("mergeReleaseNativeLibs").configure { dependsOn("cleanOldJniLibs") }
+        tasks.named("mergeReleaseJniLibFolders").configure { dependsOn("cleanOldJniLibs") }
     }
 }
 
@@ -203,6 +207,18 @@ tasks.register("buildNative", Copy) {
 
     includeEmptyDirs = false
     into("src/main/jniLibs")
+}
+
+// buildNative 前置清理：必须在 merge/strip 之前删掉旧 jniLibs，
+// 否则 mergeReleaseNativeLibs 会优先采用旧的 libcamera3.so（buildNative 的
+// doFirst 删除时机太晚，发生在依赖任务之后）。
+tasks.register("cleanOldJniLibs") {
+    group = "native"
+    description = "删除 src/main/jniLibs，确保 buildNative 只使用 CMake 新产物"
+    doLast {
+        delete("src/main/jniLibs")
+        println ">>> 已清理旧 jniLibs（buildNative 前置）<<<"
+    }
 }
 
 dependencies {

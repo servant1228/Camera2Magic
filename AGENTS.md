@@ -22,6 +22,7 @@
 | 项目 | 版本 / 值 |
 | --- | --- |
 | 构建系统 | Gradle 9.5.0（腾讯云镜像分发），AGP 9.3.0 |
+| 原生依赖 | libjpeg-turbo 3.1.3（vendored，`src/main/cpp/libjpeg-turbo/`，与原库版本一致） |
 | Kotlin | 2.4.10（jvmTarget 11，官方代码风格） |
 | SDK | compileSdk 37（release DSL），minSdk 33，targetSdk 36 |
 | NDK | 29.0.14206865（CMake 默认关闭，见“构建规范”） |
