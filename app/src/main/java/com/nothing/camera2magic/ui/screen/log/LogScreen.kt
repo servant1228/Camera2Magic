@@ -89,6 +89,7 @@ import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -379,16 +380,14 @@ private fun LogEntryCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .padding(bottom = 12.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = {
-                        clipboard.setText(AnnotatedString(entry.message))
-                        Toast.makeText(context, R.string.common_copied_to_clipboard, Toast.LENGTH_SHORT).show()
-                    },
-                )
-            },
+            .padding(bottom = 12.dp),
         onClick = onClick,
+        onLongPress = {
+            clipboard.setText(AnnotatedString(entry.message))
+            Toast.makeText(context, R.string.common_copied_to_clipboard, Toast.LENGTH_SHORT).show()
+        },
+        pressFeedbackType = PressFeedbackType.Sink,
+        showIndication = true,
         insideMargin = PaddingValues(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
