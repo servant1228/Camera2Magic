@@ -2,9 +2,6 @@ package com.nothing.camera2magic.viewmodel
 
 import android.app.Application
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nothing.camera2magic.BuildConfig
@@ -21,7 +18,6 @@ data class HomeUiState(
     val xposedActive: Boolean = false,
     val hookMode: String = "Camera2",
     val versionName: String = BuildConfig.VERSION_NAME,
-    val runningTimeSeconds: Long = 0L,
     val playSound: Boolean = false,
     val enableLog: Boolean = false,
     val injectMenu: Boolean = false,
@@ -38,16 +34,12 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
 
-    private var runningStartTime: Long = 0L
-    private var isRunning = false
-
     companion object {
         private const val TAG = "[Home VM]"
     }
 
     init {
         loadInitialState()
-        startRunningTimer()
         Dog.enabled = repository.enableLog
         Dog.i(TAG, "Camera2Magic started, module=${repository.moduleEnabled}", repository.enableLog)
         viewModelScope.launch {
@@ -76,19 +68,6 @@ class HomeViewModel(
                 manuallyRotate = repository.manuallyRotate,
                 scopeAppList = repository.getScopeAppList() ?: emptyList(),
             )
-        }
-    }
-
-    private fun startRunningTimer() {
-        runningStartTime = System.currentTimeMillis()
-        isRunning = true
-        viewModelScope.launch {
-            while (isRunning) {
-                _uiState.update {
-                    it.copy(runningTimeSeconds = (System.currentTimeMillis() - runningStartTime) / 1000L)
-                }
-                delay(1000L)
-            }
         }
     }
 
@@ -152,8 +131,4 @@ class HomeViewModel(
         _uiState.update { it.copy(hookMode = mode) }
     }
 
-    override fun onCleared() {
-        isRunning = false
-        super.onCleared()
-    }
 }

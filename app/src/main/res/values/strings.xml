@@ -7,6 +7,7 @@
     <string name="module_switch_name">Enable Module</string>
     <string name="home_device_model">Model</string>
     <string name="home_device_system">System</string>
+    <string name="home_device_architecture">Architecture</string>
     <string name="nav_home">Home</string>
     <string name="nav_log">Log</string>
     <string name="nav_scope">Scope</string>
@@ -15,7 +16,6 @@
     <string name="home_status_disabled">Module Disabled</string>
     <string name="home_status_inactive">Module Not Activated</string>
     <string name="home_status_inactive_hint">Enable the module in LSPosed first</string>
-    <string name="home_running_format">Running %1$d min %2$d sec</string>
     <string name="home_hook_mode">Hook Mode</string>
     <string name="home_activate_module">Activate Module</string>
     <string name="home_deactivate_module">Deactivate Module</string>

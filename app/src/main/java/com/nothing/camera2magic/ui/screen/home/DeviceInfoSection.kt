@@ -21,6 +21,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun DeviceInfoCard(modifier: Modifier = Modifier) {
     val model = Build.MODEL
     val systemInfo = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+    val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
 
     Card(
         modifier = modifier
@@ -49,6 +50,18 @@ fun DeviceInfoCard(modifier: Modifier = Modifier) {
             )
             Text(
                 text = systemInfo,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.home_device_architecture),
+                fontSize = MiuixTheme.textStyles.main.fontSize,
+                fontWeight = FontWeight.Medium,
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = abi,
                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )
