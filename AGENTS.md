@@ -193,7 +193,7 @@ flowchart LR
 - release 使用 `app/cam2magic.keystore` 签名（storePassword/keyPassword/alias 均为
   `camera2` / `cam2magic`），`minifyEnabled true + shrinkResources true`；
 - ABI split 只产出 **arm64-v8a**（`splits.abi.include`），输出名
-  `CAM2Magic-1.1.2-arm64-v8a.apk`（`androidComponents.onVariants` 重命名）。
+  `CAM2Magic-2.0.0-arm64-v8a.apk`（`androidComponents.onVariants` 重命名）。
 
 ### 7.2 原生构建（重新编译 libcamera3.so 时才用）
 
@@ -209,7 +209,7 @@ flowchart LR
 
 ### 7.3 版本号
 
-- `versionName = 1.1.2`（`major.minor.patch` 手写常量）；
+- `versionName = 2.0.0`（`major.minor.patch` 手写常量）；
 - `versionCode = versionCodeOffset(0) + git 提交数`（`git rev-list --count HEAD`，
   失败时回退为 1）。项目内已建立 git 仓库（`C:\Users\fdhyr\Camera2Magic`），
   每次发布前新增提交即可让 versionCode 递增（截至本文档更新时共 2 次提交，
