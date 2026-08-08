@@ -8,7 +8,7 @@
 **Camera2 Magic（包名 `com.nothing.camera2magic`，产物名 CAM2Magic）** 是一个基于
 **LSPosed / libxposed（API 102）** 的 **Android 虚拟摄像头模块**：
 
-- 用户在宿主 App 中选择本地视频 / 图片作为“虚拟摄像头”内容；
+- 用户在“作用域”页的每个应用配置（AppConfig）中按应用选择照片 / 视频作为“虚拟摄像头”内容；
 - 当被 Hook 的应用调用
   Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，
   模块用所选媒体替换真实画面；
@@ -59,8 +59,7 @@ Camera2Magic/
 │       │   ├── ui/                  # Compose UI（screen/component/navigation3/theme/util）
 │       │   ├── utils/Dog.kt         # 日志单例（StateFlow + logcat 桥接监听）
 │       │   ├── utils/MediaPathResolver.kt  # content:// 媒体解析为可展示路径
-│       │   ├── view/SpotlightView.kt
-│       │   └── viewmodel/           # ConfigRepository + 4 个 ViewModel + Factory + CompositionLocals
+│       │   └── viewmodel/           # ConfigRepository + 3 个 ViewModel + Factory + CompositionLocals
 │       ├── res/values{, -zh-rCN}/strings.xml  # 英文 + 中文文案
 │       ├── res/xml/file_paths.xml   # FileProvider 导出路径
 │       ├── jniLibs/{arm64-v8a}/libcamera3.so   # 预编译原生库（闭源，源码不入库）
@@ -98,9 +97,10 @@ flowchart LR
    `service.getRemotePreferences("camera_magic_config")`；
 3. 媒体文件通过 `openRemoteFile(fileName)` 写入 Hook 进程可读的文件描述符
    （`prepareRemoteMedia`），`MagicHook.openRemoteFile` 在 Hook 侧读取；
-4. Hook 进程内 `SourceManager.refreshPrefs()` 读取同一组键，计算 `validMedia`
-   （本地视频/图片或 RTSP），并支持**按包覆盖**
-   （`app_hook_<pkg>`、`app_media_mode_<pkg>`、`app_remote_photo/video_<pkg>`）。
+4. Hook 进程内 `SourceManager.refreshPrefs()` 按当前包（`GlobalState.processName`）读取
+   **按应用配置**并计算 `validMedia`：`app_media_mode_<pkg>` 为 `photo`/`video` 时取
+   `app_remote_photo/video_<pkg>` 远程文件；否则 `validMedia = null`（不替换）。
+   全局媒体键已移除。
 
 ### 4.3 运行流（Hook 侧）
 
@@ -109,7 +109,7 @@ flowchart LR
    首个 Activity 启动时 `refreshAndDispatch()`（重新解析媒体、可弹 Toast）；
 2. `Camera1Hooker` / `Camera2Hooker`：把应用真实预览 Surface 换成 `BlackHole`
    假 Surface，原 Surface 通过 `NativeBridge.addRenderTarget` 交给原生引擎；
-3. 同一时刻 `Camera3.start` 用 ExoPlayer 播放所选视频/RTSP（或 Canvas 以 ~30fps
+3. 同一时刻 `Camera3.start` 用 ExoPlayer 播放所选视频（或 Canvas 以 ~30fps
    绘制静态图）到 OES 纹理 → `SurfaceTexture` → 原生引擎注入到目标 Surface；
    `main_manually_rotate` 变化时通过改写 `updateCameraBaseData` 的
    sensorOri/displayOri 实时生效；
@@ -165,16 +165,11 @@ flowchart LR
 | `main_inject_menu` | Boolean=false | 向目标相机应用注入菜单（当前仅宿主 UI 开关，Hook 侧尚未实现） |
 | `main_fix_photo_rotation` | Boolean=false | 拍照旋转修正：忽略相机 EXIF，按媒体自身方向烘焙 |
 | `main_manually_rotate` | Int=0 | 手动旋转（0/90/180/270 索引） |
-| `media_source` | Int=0 | 0 本地，1 网络 |
-| `local_media_type` | Int=0 | 0 视频，1 图片 |
-| `remote_video_file` / `remote_image_file` | String? | 上传后的远程文件名 |
-| `network_rtsp_uri` | String? | RTSP 地址（media3-exoplayer-rtsp 播放） |
-| `local_video_uri` / `local_image_uri` | String? | 宿主侧持久化 URI（takePersistableUriPermission） |
 | `hook_enabled_packages` | String(逗号分隔) | 启用 Hook 的包集合 |
 | `app_hook_<pkg>` | Boolean=true | 单应用 Hook 开关 |
-| `app_media_mode_<pkg>` | global/photo/video | 单应用媒体模式 |
+| `app_media_mode_<pkg>` | photo/video | 单应用媒体模式（AppConfig 页下拉；“关闭”由 `app_hook_<pkg>` 开关表达） |
 | `app_photo_uri_<pkg>` / `app_video_uri_<pkg>` | String? | 单应用在宿主侧选择的持久化 URI（AppConfig 页面） |
-| `app_remote_photo_<pkg>` / `app_remote_video_<pkg>` | String? | 单应用覆盖的媒体文件 |
+| `app_remote_photo_<pkg>` / `app_remote_video_<pkg>` | String? | 单应用上传的远程媒体文件 |
 | `theme_*` | 见 `ThemeConfig` | 主题全部键（dark_mode/pure_black/monet/palette/accent/blur/floating_bar/floating_bottom_bar_style/bottom_bar_mode/density_scale/predictive_back） |
 | `main_hook_mode` | "Camera2" | Hook 模式（UI 展示用） |
 
@@ -266,7 +261,8 @@ flowchart LR
 
 ## 9. 已知坑与遗留问题（改动前必读）
 
-- **RTSP 播放已实现**（依赖 `media3-exoplayer-rtsp`），但宿主 UI 还没有 RTSP 地址输入入口，目前仅能通过 `network_rtsp_uri` 配置。
+- 全局媒体机制与 RTSP 已移除：媒体只能按应用在 AppConfig 中选择（照片/视频），
+  未配置媒体时 `validMedia = null`，Hook 不会注入画面。
 - `main_inject_menu`（注入菜单）目前只是宿主 UI 上的开关，Hook 侧没有对应实现；不要把它当作已生效的功能。
 - `NativeBridge.updateManualRotation` 在预编译 `libcamera3.so` 中没有实际读取点；
   手动旋转通过 `SourceManager.applyManualRotationToNative()` 改写

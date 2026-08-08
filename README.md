@@ -7,7 +7,7 @@
 ## 简介
 
 Camera2 Magic 是一个基于 **LSPosed / libxposed（API 102）** 的 Android 虚拟摄像头模块：当被 Hook 的应用调用
-Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你选择的本地视频、图片或 RTSP 网络流替换真实画面。
+Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在该应用配置中选择的照片或视频替换真实画面。
 
 ## 特性
 
@@ -16,10 +16,9 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你选
   - ImageReader 拍照替换（JPEG 保留 EXIF；YUV 走原生覆盖）
   - WebRTC（camera2）路径适配
 - 媒体源
-  - 本地视频 / 静态图片
-  - RTSP 网络流（media3-exoplayer-rtsp）
+  - 按应用配置照片 / 视频（本地媒体）
 - 精细化配置
-  - 按应用单独设置媒体与开关（AppConfig）
+  - 按应用三态控制：关闭 / 照片 / 视频（AppConfig）
   - 手动旋转、拍照旋转修正
   - 播放声音、Toast、日志开关
 - 界面
@@ -35,9 +34,8 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你选
 ## 使用步骤
 
 1. 在 LSPosed 管理器中激活本模块，并勾选作用域；
-2. 打开模块 UI，选择本地视频/图片作为虚拟摄像头内容（或配置 RTSP 地址）；
-3. 开启模块总开关，进入目标应用即可生效；
-4. 可选：为单个应用单独配置媒体与开关。
+2. 在模块的“作用域”页进入目标应用配置，开启“启用 Hook”，选择“照片/视频”并选取媒体文件；
+3. 开启模块总开关，进入目标应用即可生效（未配置媒体时不替换画面）。
 
 > 注意：媒体文件需要可被模块与目标应用访问；拍照替换仅对支持 JPEG/YUV 输出的相机路径生效。
 
