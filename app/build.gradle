@@ -35,6 +35,7 @@ def gitCommitCount = getGitCommitCount()
 
 def startTasks = gradle.startParameter.taskNames
 def isExplicitNativeBuild = startTasks.any { it.contains("buildNative") }
+def hasNativeSource = file("src/main/cpp/CMakeLists.txt").exists()
 
 android {
 
@@ -42,7 +43,7 @@ android {
     compileSdk {
         version = release(37)
     }
-    //ndkVersion = "27.0.12077973"
+    // 原生源码仅本地保留（不入库）；此版本号仅供本机 buildNative 使用
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
@@ -58,10 +59,12 @@ android {
         versionCode versionCodeOffset + gitCommitCount
         versionName "${majorVersion}.${minorVersion}.${patchVersion}"
 
-        externalNativeBuild {
-            cmake {
-                cppFlags += ""
-                arguments "-DANDROID_PLATFORM=android-29", "-DANDROID_STL=c++_static"
+        if (hasNativeSource) {
+            externalNativeBuild {
+                cmake {
+                    cppFlags += ""
+                    arguments "-DANDROID_PLATFORM=android-29", "-DANDROID_STL=c++_static"
+                }
             }
         }
 
@@ -119,14 +122,6 @@ android {
         }
     }
 
-    // externalNativeBuild 现在指向重建的 src/main/cpp/CMakeLists.txt
-    externalNativeBuild {
-        cmake {
-            path file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-
     buildFeatures {
         compose true
         aidl true
@@ -141,6 +136,16 @@ android {
         }
     }
 
+    // 公开仓库不含 app/src/main/cpp；仅当本地存在原生源码时才启用 CMake 配置
+    if (hasNativeSource) {
+        externalNativeBuild {
+            cmake {
+                path file("src/main/cpp/CMakeLists.txt")
+                version = "3.22.1"
+            }
+        }
+    }
+
     packaging {
         jniLibs {
             useLegacyPackaging false
@@ -149,75 +154,77 @@ android {
     }
 }
 
-afterEvaluate {
-    if (!isExplicitNativeBuild) {
-        def jniLibTree = fileTree(dir: "src/main/jniLibs", include: "**/libcamera3.so")
-        if (jniLibTree.isEmpty()) {
-            println ">>> [警告] jniLibs 文件不存在， 无法快速编译 <<<"
-            return
+if (hasNativeSource) {
+    afterEvaluate {
+        if (!isExplicitNativeBuild) {
+            def jniLibTree = fileTree(dir: "src/main/jniLibs", include: "**/libcamera3.so")
+            if (jniLibTree.isEmpty()) {
+                println ">>> [警告] jniLibs 文件不存在， 无法快速编译 <<<"
+                return
+            }
+
+            println ">>> 模式: 快速编译 (C++ 编译已禁用，使用 jniLibs) <<<"
+            // 1. 禁用 CMake 和 Strip 任务
+            tasks.matching { task ->
+                (task.name.startsWith("buildCMake") || task.name.startsWith("externalNativeBuild")) &&
+                        !task.name.contains("generateJsonModel")
+            }.configureEach { task ->
+                task.enabled = false
+            }
+        } else {
+            // Native 构建模式：合并 jniLibs 前先清掉旧 .so，避免旧产物被拷回
+            tasks.named("mergeReleaseNativeLibs").configure { dependsOn("cleanOldJniLibs") }
+            tasks.named("mergeReleaseJniLibFolders").configure { dependsOn("cleanOldJniLibs") }
         }
-
-        println ">>> 模式: 快速编译 (C++ 编译已禁用，使用 jniLibs) <<<"
-        // 1. 禁用 CMake 和 Strip 任务
-        tasks.matching { task ->
-            (task.name.startsWith("buildCMake") || task.name.startsWith("externalNativeBuild")) &&
-                    !task.name.contains("generateJsonModel")
-        }.configureEach { task ->
-            task.enabled = false
-        }
-    } else {
-        // Native 构建模式：合并 jniLibs 前先清掉旧 .so，避免旧产物被拷回
-        tasks.named("mergeReleaseNativeLibs").configure { dependsOn("cleanOldJniLibs") }
-        tasks.named("mergeReleaseJniLibFolders").configure { dependsOn("cleanOldJniLibs") }
-    }
-}
-
-tasks.register("buildNative", Copy) {
-    group = "native"
-    description = "编译 C++ 产物并同步到 jniLibs (基于 Modern Release)"
-
-    def targetVariant = "release"
-    def stripTaskName = "stripReleaseDebugSymbols"
-
-    // strip task may not exist in fast-build mode; only depend on it when present
-    dependsOn tasks.matching { it.name == stripTaskName }
-    outputs.upToDateWhen { false }
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-
-    doFirst {
-        def cmakeFile = file("src/main/cpp/CMakeLists.txt")
-        if (!cmakeFile.exists()) {
-            throw new GradleException(
-                ">>> buildNative failed: missing src/main/cpp/CMakeLists.txt, cannot build libcamera3.so <<<" +
-                " (restore C++ sources and uncomment externalNativeBuild in app/build.gradle first)"
-            )
-        }
-        delete("src/main/jniLibs")
-        delete("release/")
-        delete(".cxx")
-        println ">>> 已清理旧的 jniLibs 目录和 C++ 缓存 <<<"
-        println ">>> 模式: Native 构建 (基于 ${targetVariant} 编译 C++ 并更新 jniLibs) <<<"
     }
 
-    def startDir = layout.buildDirectory.dir("intermediates/stripped_native_libs/${targetVariant}/${stripTaskName}/out/lib")
+    tasks.register("buildNative", Copy) {
+        group = "native"
+        description = "编译 C++ 产物并同步到 jniLibs (基于 Modern Release)"
 
-    from(startDir) {
-        include("**/libcamera3.so")
+        def targetVariant = "release"
+        def stripTaskName = "stripReleaseDebugSymbols"
+
+        // strip task may not exist in fast-build mode; only depend on it when present
+        dependsOn tasks.matching { it.name == stripTaskName }
+        outputs.upToDateWhen { false }
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+        doFirst {
+            def cmakeFile = file("src/main/cpp/CMakeLists.txt")
+            if (!cmakeFile.exists()) {
+                throw new GradleException(
+                    ">>> buildNative failed: missing src/main/cpp/CMakeLists.txt, cannot build libcamera3.so <<<" +
+                    " (restore C++ sources or clone them back locally; source is not in the public repo)"
+                )
+            }
+            delete("src/main/jniLibs")
+            delete("release/")
+            delete(".cxx")
+            println ">>> 已清理旧的 jniLibs 目录和 C++ 缓存 <<<"
+            println ">>> 模式: Native 构建 (基于 ${targetVariant} 编译 C++ 并更新 jniLibs) <<<"
+        }
+
+        def startDir = layout.buildDirectory.dir("intermediates/stripped_native_libs/${targetVariant}/${stripTaskName}/out/lib")
+
+        from(startDir) {
+            include("**/libcamera3.so")
+        }
+
+        includeEmptyDirs = false
+        into("src/main/jniLibs")
     }
 
-    includeEmptyDirs = false
-    into("src/main/jniLibs")
-}
-
-// buildNative 前置清理：必须在 merge/strip 之前删掉旧 jniLibs，
-// 否则 mergeReleaseNativeLibs 会优先采用旧的 libcamera3.so（buildNative 的
-// doFirst 删除时机太晚，发生在依赖任务之后）。
-tasks.register("cleanOldJniLibs") {
-    group = "native"
-    description = "删除 src/main/jniLibs，确保 buildNative 只使用 CMake 新产物"
-    doLast {
-        delete("src/main/jniLibs")
-        println ">>> 已清理旧 jniLibs（buildNative 前置）<<<"
+    // buildNative 前置清理：必须在 merge/strip 之前删掉旧 jniLibs，
+    // 否则 mergeReleaseNativeLibs 会优先采用旧的 libcamera3.so（buildNative 的
+    // doFirst 删除时机太晚，发生在依赖任务之后）。
+    tasks.register("cleanOldJniLibs") {
+        group = "native"
+        description = "删除 src/main/jniLibs，确保 buildNative 只使用 CMake 新产物"
+        doLast {
+            delete("src/main/jniLibs")
+            println ">>> 已清理旧 jniLibs（buildNative 前置）<<<"
+        }
     }
 }
 

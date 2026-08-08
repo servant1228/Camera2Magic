@@ -23,3 +23,7 @@ captures/
 # 操作系统文件
 .DS_Store
 Thumbs.db
+
+# 本地私有源码/文档：仅本机保留，不入库（公开仓库不含）
+/docs/
+/app/src/main/cpp/

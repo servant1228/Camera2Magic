@@ -22,10 +22,10 @@
 | 项目 | 版本 / 值 |
 | --- | --- |
 | 构建系统 | Gradle 9.5.0（腾讯云镜像分发），AGP 9.3.0 |
-| 原生依赖 | libjpeg-turbo 3.1.3（vendored，`src/main/cpp/libjpeg-turbo/`，与原库版本一致） |
+| 原生依赖 | libjpeg-turbo 3.1.3（预编译 `.so` 静态链入，源码不入库） |
 | Kotlin | 2.4.10（jvmTarget 11，官方代码风格） |
 | SDK | compileSdk 37（release DSL），minSdk 33，targetSdk 36 |
-| NDK | 29.0.14206865（CMake 默认关闭，见“构建规范”） |
+| NDK | 29.0.14206865（仅本地原生构建需要；源码不入库，公开仓库不配置 CMake） |
 | UI | Jetpack Compose + **Miuix 0.9.3**（HyperOS 风格组件库） |
 | 导航 | androidx.navigation3 1.1.4（`Route` 为 @Serializable sealed 层级）+ `miuix-navigation3-ui`（随 Miuix 0.9.3） |
 | 播放器 | media3-exoplayer 1.10.0（`ExoPlayer` + 自定义 `DataSource`） |
@@ -38,7 +38,7 @@
 ```text
 Camera2Magic/
 ├── app/
-│   ├── build.gradle                 # 版本、签名、ABI split、buildNative 任务
+│   ├── build.gradle                 # 版本、签名、ABI split、打包 jniLibs
 │   ├── cam2magic.keystore           # release 签名（密码 camera2，见构建规范）
 │   ├── proguard-rules.pro           # keep native 方法与 com.nothing.camera2magic.**
 │   └── src/main/
@@ -62,18 +62,15 @@ Camera2Magic/
 │       │   └── viewmodel/           # ConfigRepository + 4 个 ViewModel + Factory + CompositionLocals
 │       ├── res/values{, -zh-rCN}/strings.xml  # 英文 + 中文文案
 │       ├── res/xml/file_paths.xml   # FileProvider 导出路径
-│       ├── cpp/                        # ★ 原生源码（CMakeLists.txt + Camera3/YuvConverter/ImageUtils/JniBridge + libjpeg-turbo）
-│       ├── jniLibs/{arm64-v8a}/libcamera3.so   # buildNative 产物（源码在 src/main/cpp）
+│       ├── jniLibs/{arm64-v8a}/libcamera3.so   # 预编译原生库（闭源第三方，源码不入库）
 │       └── resources/META-INF/xposed/  # module.prop / java_init.list / native_init.list / scope.list
 ├── app/src/test/                   # 单元测试（LogcatParserTest 等）
 ├── build.gradle / settings.gradle / gradle.properties / gradle/libs.versions.toml
-├── docs/reverse/libcamera3/       # 预编译原生库反编译还原成果（报告/重建头文件/Ghidra 伪代码）
 └── local.properties                # 本机 SDK 路径，不入库
 ```
 
-> 注意：`app/src/main/cpp/` 已重建（CMakeLists + Camera3/YuvConverter/ImageUtils/JniBridge，
-> 内含静态链入的 `libjpeg-turbo/`）；`externalNativeBuild` 已启用。
-> 常规快速构建仍直接使用 `jniLibs` 里的 `.so`（`buildNative` 可重新编译）。
+> 注意：公开仓库只含预编译 `.so`；`app/src/main/cpp/`（原生源码）与 `docs/`（逆向
+> 文档）仅存在于本地工作区，已加入 `.gitignore` 不入库。常规构建直接使用 `jniLibs`。
 
 ## 4. 核心架构与数据流
 
@@ -189,13 +186,18 @@ flowchart LR
 ```
 
 - 直接使用 `src/main/jniLibs` 预编译的 `libcamera3.so`；
-- `afterEvaluate` 会**自动禁用所有 CMake / externalNativeBuild 任务**，除非本次命令含 `buildNative`；
+- 公开仓库不含原生源码，构建直接用 `jniLibs`；本机有源码时仍可 `buildNative`
+  （源码缺失时自动跳过 CMake 配置）；
 - release 使用 `app/cam2magic.keystore` 签名（storePassword/keyPassword/alias 均为
   `camera2` / `cam2magic`），`minifyEnabled true + shrinkResources true`；
 - ABI split 只产出 **arm64-v8a**（`splits.abi.include`），输出名
   `CAM2Magic-2.0.0-arm64-v8a.apk`（`androidComponents.onVariants` 重命名）。
 
-### 7.2 原生构建（重新编译 libcamera3.so 时才用）
+### 7.2 原生库说明（本地源码构建）
+
+公开仓库只包含预编译闭源 `.so`（`app/src/main/jniLibs/arm64-v8a/`），**不含源码**。
+原生源码 `app/src/main/cpp/` 与逆向文档 `docs/` 仅保留在本地工作区（已 gitignore，
+不会提交）。本机存在源码时，`build.gradle` 会自动启用 CMake 配置并注册 `buildNative`：
 
 ```powershell
 .\gradlew.bat buildNative
@@ -203,9 +205,8 @@ flowchart LR
 
 `buildNative` 会：删除 `src/main/jniLibs`、`release/`、`.cxx` → 依赖
 `stripReleaseDebugSymbols` → 把 stripped 的 `libcamera3.so` 拷回 `jniLibs`。
-✅ `src/main/cpp/CMakeLists.txt` 已存在；`buildNative` 通过 `ExternalProject_Add`
-先编译 `libjpeg-turbo`（`libturbojpeg.a`），再链接生成 `libcamera3.so`。
 首次构建或改动 CMake 后建议 `gradlew clean buildNative`（避免旧中间产物被拷回）。
+源码缺失时（如公开仓库克隆）自动跳过 CMake 配置，直接用预编译 `.so` 快速构建。
 
 ### 7.3 版本号
 
@@ -238,8 +239,9 @@ flowchart LR
    对象引用用 `WeakReference` / `WeakHashMap` 防止内存泄漏（BlackHole、hookedClasses 都是）。
 5. Hook 拦截里任何可能抛异常的代码用 `runCatching` 包住，失败只记日志，不阻断原调用。
 6. 每个拦截器入口先判 `SM.readyForHook`（模块开关 + 应用开关），不满足直接 `chain.proceed()`。
-7. `NativeBridge` 是 JNI 契约的唯一来源：新增/修改 native 函数时，Java 声明与
-   `libcamera3.so` 导出必须同步，否则运行期 `UnsatisfiedLinkError`。
+7. `NativeBridge` 是 JNI 契约的唯一来源：Java 声明与预编译 `libcamera3.so` 的导出
+   保持同步，否则运行期 `UnsatisfiedLinkError`（`.so` 源码不入库，如需新增 native
+   函数须在仓库外维护源码并重新编译）。
 8. UI 使用 Miuix 组件（`top.yukonga.miuix.kmp.*`），主题基于
    `ThemeController` + `MiuixTheme`（由 `Camera2MagicTheme` 统一装载）；
    新增页面文案进 `res/values/strings.xml`（英文）+ `values-zh-rCN/strings.xml`（中文）。
@@ -265,12 +267,10 @@ flowchart LR
   结束时也要清理，否则 Surface 泄漏。
 - `Camera3` 是**单例状态**（companion object 持有 player/surface），多个相机实例
   同时打开时共享同一渲染端，修改需谨慎。
-- `externalNativeBuild` 已启用并指向 `src/main/cpp/CMakeLists.txt`；
-  `buildNative` 由源码构建（libjpeg-turbo 3.1.3 静态链入），原始预编译 `.so` 有备份
-  （见反编译报告 evidence/original-so/）。
-- 原生库已从还原成果重建为可编译源码（`app/src/main/cpp/`），JNI 契约与 Kotlin
-  `NativeBridge.kt` 一致；新增或修改 native 行为前先读 `docs/reverse/libcamera3/`
-  报告与 `NativeBridge-JNI.md`（重建头文件是语义参考，实现以 `*.cpp` 为准）。
+- 原生库为预编译闭源 `.so`；原生源码仅本地保留（`app/src/main/cpp/`，已 gitignore），
+  `buildNative` 仅在本机源码存在时可执行，公开仓库不含源码。
+- JNI 契约以 Kotlin `NativeBridge.kt` 为准；`.so` 为闭源产物，逆向文档（`docs/`）
+  仅本地保留，不入库。
 - 项目 git 仓库位于项目目录内，已初始化并有提交；`versionCode` 随提交数递增。
 
 ## 10. 改动 Checklist（AI 自检）
@@ -278,7 +278,8 @@ flowchart LR
 - [ ] 新增/修改 Hook：实现 `HookManager`、在 `MagicHook` 装配、`safeHook` 去重、先判 `readyForHook`、异常用 `runCatching` 包住、结束时清理 `BlackHole`/`Camera3`。
 - [ ] 新增配置：同时在 `SourceManager`（Hook 侧读取）与 `ConfigRepository`（宿主侧读写+远程同步）添加，键名保持 `snake_case` 一致。
 - [ ] 新增 UI：Miuix 组件、字符串进 `strings.xml`（en + zh-rCN）、导航走 `Route` + `Navigator`、ViewModel 经 `ViewModelFactory` 注册。
-- [ ] 改动原生：更新 `NativeBridge` 声明、重新运行 `buildNative` 生成 `jniLibs`、检查 proguard keep。
+- [ ] 改动原生：在本机 `app/src/main/cpp/` 维护源码（不入库），`gradlew buildNative`
+      后更新 `jniLibs` 产物、检查 proguard keep；公开仓库只发布预编译 `.so`。
 - [ ] 构建验证：统一用 `.\gradlew.bat assembleRelease`（用户要求只构建正式版）；改动签名/版本/ABI 时核对 `app/build.gradle` 常量。
 - [ ] 改动 `Dog` / logcat 解析等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
 - [ ] 编码检查：所有改动文件保持 UTF-8，中文注释在 UTF-8 读取下无乱码。
