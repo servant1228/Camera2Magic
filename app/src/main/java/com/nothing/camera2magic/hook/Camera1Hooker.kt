@@ -246,7 +246,7 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
             val originalH = bounds.outHeight
             if (originalW <= 0 || originalH <= 0) return@runCatching null
 
-            val camOrientation = if (SM.fixPhotoRotation || SM.adaptLandscape) {
+            val camOrientation = if (SM.fixPhotoRotation) {
                 runCatching {
                     ExifInterface(ByteArrayInputStream(origin))
                         .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
@@ -256,27 +256,12 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
             val pfd = magic.openRemoteFile(validMedia.file)
             try {
                 val mediaBytes = FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
-                val mediaOrientation = if (SM.adaptLandscape) {
-                    runCatching {
-                        ExifInterface(ByteArrayInputStream(mediaBytes))
-                            .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-                    }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-                } else ExifInterface.ORIENTATION_NORMAL
-                val bakeDegrees = orientationDegrees(camOrientation) - orientationDegrees(mediaOrientation)
+                val bakeDegrees = orientationDegrees(camOrientation)
                 val replBmp = decodeSampled(mediaBytes, 2048) ?: return@runCatching null
-                // 与 ImageReader 路径的「照片方向修正」开关语义一致：
-                // 开 → contain 黑边烘焙旋转；关 → 仅旋转后拉伸适配
-                val scaled = if (SM.fixPhotoRotation) {
-                    bakeOrientation(replBmp, bakeDegrees, originalW, originalH)
-                } else {
-                    val rotated = rotateBitmap(replBmp, bakeDegrees)
-                    val s = Bitmap.createScaledBitmap(rotated, originalW, originalH, true)
-                    if (rotated !== replBmp && s !== rotated) rotated.recycle()
-                    s
-                }
+                val scaled = bakeOrientation(replBmp, bakeDegrees, originalW, originalH)
                 Dog.i(
                     TAG,
-                    "image replace: origin=${originalW}x${originalH} camOri=$camOrientation, media=${replBmp.width}x${replBmp.height} mediaOri=$mediaOrientation, out=${scaled.width}x${scaled.height}, bake=$bakeDegrees, fixRotation=${SM.fixPhotoRotation}",
+                    "image replace: origin=${originalW}x${originalH} camOri=$camOrientation, media=${replBmp.width}x${replBmp.height}, out=${scaled.width}x${scaled.height}, bake=$bakeDegrees, fixRotation=${SM.fixPhotoRotation}",
                     SM.enableLog,
                 )
                 if (scaled !== replBmp) replBmp.recycle()
@@ -350,12 +335,6 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
         ExifInterface.ORIENTATION_ROTATE_180 -> 180f  // 3
         ExifInterface.ORIENTATION_ROTATE_270 -> 90f   // 8
         else -> 0f
-    }
-
-    private fun rotateBitmap(src: Bitmap, degrees: Float): Bitmap {
-        if (degrees == 0f) return src
-        val matrix = android.graphics.Matrix().apply { postRotate(degrees) }
-        return Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
     }
 
     /** 等比适配（contain，黑边）到目标尺寸，并把旋转烘焙进像素。 */

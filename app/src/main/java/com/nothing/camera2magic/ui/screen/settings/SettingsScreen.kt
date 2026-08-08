@@ -92,14 +92,6 @@ fun SettingsScreenContent(
                         onSelectedIndexChange = { viewModel.onManuallyRotateChanged(it) },
                     )
                 },
-                CardItem("adaptLandscape") {
-                    SwitchPreference(
-                        title = stringResource(R.string.quick_entry_adapt_landscape),
-                        summary = stringResource(R.string.quick_entry_adapt_landscape_summary),
-                        checked = uiState.adaptLandscape,
-                        onCheckedChange = { viewModel.onAdaptLandscapeChanged(it) },
-                    )
-                },
                 CardItem("injectMenu") {
                     SwitchPreference(
                         title = stringResource(R.string.quick_entry_inject_menu),

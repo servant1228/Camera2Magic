@@ -74,7 +74,7 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                         try {
                             // 缓存键包含文件大小与修改时间：媒体重新上传后不会命中旧缓存
                             val st = runCatching { android.system.Os.fstat(pfd.fileDescriptor) }.getOrNull()
-                            val cacheKey = "${validMedia.file}_${if (SM.fixPhotoRotation) 1 else 0}_${if (SM.adaptLandscape) 1 else 0}_${st?.st_size}_${st?.st_mtime}_${originalW}_${originalH}"
+                            val cacheKey = "${validMedia.file}_${if (SM.fixPhotoRotation) 1 else 0}_${st?.st_size}_${st?.st_mtime}_${originalW}_${originalH}"
                             jpeg = if (cacheKey == cachedJpegKey) cachedJpegBytes else null
                             if (jpeg != null) {
                                 Dog.i(TAG, "Using cached JPEG, size=${jpeg.size}", SM.enableLog)
@@ -83,15 +83,9 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                     java.io.FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
                                 }.getOrNull()
                                 if (replBytes != null && replBytes.isNotEmpty()) {
-                                    val camOrientation = if (SM.fixPhotoRotation || SM.adaptLandscape) {
+                                    val camOrientation = if (SM.fixPhotoRotation) {
                                         runCatching {
                                             ExifInterface(java.io.ByteArrayInputStream(originalJpeg))
-                                                .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-                                        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-                                    } else ExifInterface.ORIENTATION_NORMAL
-                                    val mediaOrientation = if (SM.adaptLandscape) {
-                                        runCatching {
-                                            ExifInterface(java.io.ByteArrayInputStream(replBytes))
                                                 .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
                                         }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
                                     } else ExifInterface.ORIENTATION_NORMAL
@@ -101,13 +95,11 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                         android.graphics.BitmapFactory.decodeByteArray(replBytes, 0, replBytes.size)
                                     }
                                     if (replBmp != null) {
-                                        // 横屏适配：把媒体自身 EXIF 与相机 EXIF 合并烘焙进像素，输出保留相机 EXIF，
-                                        // 查看器应用 EXIF 后即得到媒体正向画面（横屏不再被旋转/压扁）
-                                        val bakeDegrees = orientationDegrees(camOrientation) - orientationDegrees(mediaOrientation)
+                                        val bakeDegrees = orientationDegrees(camOrientation)
                                         val scaled = if (SM.fixPhotoRotation) {
                                             Dog.i(
                                                 TAG,
-                                                "photo fix: camOri=$camOrientation mediaOri=$mediaOrientation bake=$bakeDegrees src=${replBmp.width}x${replBmp.height} out=${originalW}x${originalH}",
+                                                "photo fix: camOri=$camOrientation bake=$bakeDegrees src=${replBmp.width}x${replBmp.height} out=${originalW}x${originalH}",
                                                 true,
                                             )
                                             runCatching { bakeOrientation(replBmp, bakeDegrees, originalW, originalH) }
@@ -115,11 +107,6 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                                     Dog.e(TAG, "bake orientation failed: ${it.message}", it, true)
                                                     android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
                                                 }
-                                        } else if (SM.adaptLandscape) {
-                                            val rotated = rotateBitmap(replBmp, bakeDegrees)
-                                            val fitted = android.graphics.Bitmap.createScaledBitmap(rotated, originalW, originalH, true)
-                                            if (rotated !== replBmp && fitted !== rotated) rotated.recycle()
-                                            fitted
                                         } else {
                                             android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
                                         }
@@ -341,13 +328,6 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
         ExifInterface.ORIENTATION_ROTATE_180 -> 180f  // 3
         ExifInterface.ORIENTATION_ROTATE_270 -> 90f   // 8：显示时逆时针 90°，烘焙时顺时针
         else -> 0f
-    }
-
-    /** 仅旋转（不缩放），用于把媒体自身 EXIF 方向烘焙进像素。 */
-    private fun rotateBitmap(src: android.graphics.Bitmap, degrees: Float): android.graphics.Bitmap {
-        if (degrees == 0f) return src
-        val matrix = android.graphics.Matrix().apply { postRotate(degrees) }
-        return android.graphics.Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
     }
 
     /**

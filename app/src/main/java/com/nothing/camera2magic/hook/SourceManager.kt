@@ -16,7 +16,6 @@ object SourceManager {
     private const val KEY_PLAY_SOUND = "main_play_sound"
     private const val KEY_ENABLE_LOG = "main_enable_log"
     private const val KEY_SHOW_TOAST = "main_show_toast"
-    private const val KEY_ADAPT_LANDSCAPE = "main_adapt_landscape"
     private const val KEY_MEDIA_SOURCE = "media_source" // 0: local, 1: network
     private const val KEY_LOCAL_MEDIA_TYPE = "local_media_type" // 0: video, 1: image
     private const val KEY_VIDEO_FILE = "remote_video_file"
@@ -44,9 +43,6 @@ object SourceManager {
         private set
     @Volatile
     var fixPhotoRotation: Boolean = false
-        private set
-    @Volatile
-    var adaptLandscape: Boolean = false
         private set
     @Volatile
     var manuallyRotate: Int = 0
@@ -113,11 +109,6 @@ object SourceManager {
                 if (key == "main_fix_photo_rotation") {
                     refreshPrefs()
                 }
-                // 横屏适配开关变化时实时重新下发，保证运行中立即生效
-                if (key == KEY_ADAPT_LANDSCAPE) {
-                    refreshPrefs()
-                    applyManualRotationToNative()
-                }
             }.onFailure { e ->
                 Dog.e(TAG, "apply manual rotation failed: ${e.message}", e, enableLog)
             }
@@ -147,18 +138,12 @@ object SourceManager {
     }
 
     /** 把当前手动旋转角度叠加进 base data 并重新下发原生引擎；手动旋转为 0 时恢复原值。 */
-    fun applyManualRotationToNative(forceNatural: Boolean = false) {
+    fun applyManualRotationToNative() {
         if (!baseDataSet) return
         val angles = intArrayOf(0, 90, 180, 270)
         val manual = angles[manuallyRotate.coerceIn(0, 3)]
-        // 横屏适配开启时以 0 为基准：原生引擎不再按传感器方向旋转媒体帧，
-        // 横屏视频/图片按自身方向显示且不会因旋转导致宽高比被压扁（手动旋转仍可叠加）；
-        // 拍照生成 JPEG 时传 forceNatural=true 恢复自然方向，避免照片被压扁
-        val adapt = if (forceNatural) false else adaptLandscape
-        val sensorBase = if (adapt) 0 else baseSensorOri
-        val displayBase = if (adapt) 0 else baseDisplayOri
-        val sensor = if (manual > 0) (sensorBase + manual) % 360 else sensorBase
-        val display = if (manual > 0) manual else displayBase
+        val sensor = if (manual > 0) (baseSensorOri + manual) % 360 else baseSensorOri
+        val display = if (manual > 0) manual else baseDisplayOri
         NB.updateCameraBaseData(baseApi, baseFacingFront, sensor, display, baseProcessName)
     }
 
@@ -201,9 +186,8 @@ object SourceManager {
             showToast = prefs.getBoolean(KEY_SHOW_TOAST, true)
             compressJpeg = prefs.getBoolean("main_compress_jpeg", true)
             fixPhotoRotation = prefs.getBoolean("main_fix_photo_rotation", false)
-            adaptLandscape = prefs.getBoolean(KEY_ADAPT_LANDSCAPE, false)
             manuallyRotate = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
-            Dog.w(TAG, "refreshPrefs: manuallyRotate=$manuallyRotate, adaptLandscape=$adaptLandscape, compressJpeg=$compressJpeg", true)
+            Dog.w(TAG, "refreshPrefs: manuallyRotate=$manuallyRotate, compressJpeg=$compressJpeg", true)
 
             mediaSource = prefs.getInt(KEY_MEDIA_SOURCE, 0)
             mediaType = prefs.getInt(KEY_LOCAL_MEDIA_TYPE, 0)

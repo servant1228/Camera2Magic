@@ -113,8 +113,7 @@ flowchart LR
    假 Surface，原 Surface 通过 `NativeBridge.addRenderTarget` 交给原生引擎；
 3. 同一时刻 `Camera3.start` 用 ExoPlayer 播放所选视频/RTSP（或 Canvas 以 ~30fps
    绘制静态图）到 OES 纹理 → `SurfaceTexture` → 原生引擎注入到目标 Surface；
-   `main_adapt_landscape`（横屏适配）开启时交换上报帧宽高并把图片 EXIF 方向烘焙进
-   像素；`main_manually_rotate` 变化时通过改写 `updateCameraBaseData` 的
+   `main_manually_rotate` 变化时通过改写 `updateCameraBaseData` 的
    sensorOri/displayOri 实时生效；
 4. `ImageReaderHooker`：`format=256`(JPEG) 拍照时用所选图片按原始尺寸缩放替换
    （保留 EXIF，按字节数二分搜索压缩质量，JPEG 结果按媒体+开关缓存）；
@@ -139,14 +138,14 @@ flowchart LR
 | --- | --- | --- |
 | `MagicHook` | Xposed 入口 | 加载 .so、初始化 SourceManager、装配 4 个 Hooker（Camera1/Camera2/ImageReader/WebRTC）、前台 Toast |
 | `GlobalState` | 进程内全局态 | `appContext`、`processName`、`activityCount`（@Volatile） |
-| `SourceManager` | 配置解析中心 | 所有开关与媒体键的单一读取点；`readyForHook = moduleEnabled && appHookEnabled`；监听 `main_manually_rotate` / `main_fix_photo_rotation` / `main_adapt_landscape` 变化并实时重发原生 |
+| `SourceManager` | 配置解析中心 | 所有开关与媒体键的单一读取点；`readyForHook = moduleEnabled && appHookEnabled`；监听 `main_manually_rotate` / `main_fix_photo_rotation` 变化并实时重发原生 |
 | `ConfigRepository` | 宿主侧配置读写 | 每个 setter 同时写本地 + 远程；按包配置、媒体上传、scope 查询 |
 | `HookManager` | Hook 基础设施 | `safeHook` 去重（WeakHashMap 集合）+ `runCatching` 容错 |
 | `Camera1Hooker` | 老版 Camera API | open/setPreview*/startPreview/stop/release/回调/拍照 |
 | `Camera2Hooker` | Camera2 API | openCamera、createCaptureSession*、add/removeTarget、Surface 替换 |
 | `ImageReaderHooker` | 拍照/取帧替换 | JPEG 替换 + EXIF 保留 + 质量二分；YUV 原生覆盖；JPEG 缓存 |
 | `WebRTCHooker` | WebRTC 适配 | 解析 rotation 日志、会话结束清理 |
-| `Camera3` / `Camera3Extended` | 渲染端 | ExoPlayer/Canvas → OES 纹理；横屏适配交换帧宽高/烘焙 EXIF；拍照时切自然尺寸；单例 HandlerThread("Camera3") |
+| `Camera3` / `Camera3Extended` | 渲染端 | ExoPlayer/Canvas → OES 纹理；拍照时切自然尺寸；单例 HandlerThread("Camera3") |
 | `MagicDataSource` | media3 DataSource | 基于 ParcelFileDescriptor 读取，支持 seek |
 | `NativeBridge` | JNI 桥 | 全部 `external fun` 的声明（见下） |
 | `BlackHole` | 假 Surface 池 | `WeakHashMap<Surface, BH>`，替换真实预览面；`clear()` 统一释放 |
@@ -168,7 +167,6 @@ flowchart LR
 | `main_compress_jpeg` | Boolean=true | 拍照替换时压缩 JPEG |
 | `main_inject_menu` | Boolean=false | 向目标相机应用注入菜单（当前仅宿主 UI 开关，Hook 侧尚未实现） |
 | `main_fix_photo_rotation` | Boolean=false | 拍照旋转修正：忽略相机 EXIF，按媒体自身方向烘焙 |
-| `main_adapt_landscape` | Boolean=false | 横屏适配：预览/拍照按媒体自然方向显示 |
 | `main_manually_rotate` | Int=0 | 手动旋转（0/90/180/270 索引） |
 | `media_source` | Int=0 | 0 本地，1 网络 |
 | `local_media_type` | Int=0 | 0 视频，1 图片 |
@@ -257,7 +255,7 @@ flowchart LR
 - **RTSP 播放已实现**（依赖 `media3-exoplayer-rtsp`），但宿主 UI 还没有 RTSP 地址输入入口，目前仅能通过 `network_rtsp_uri` 配置。
 - `main_inject_menu`（注入菜单）目前只是宿主 UI 上的开关，Hook 侧没有对应实现；不要把它当作已生效的功能。
 - `NativeBridge.updateManualRotation` 在预编译 `libcamera3.so` 中没有实际读取点；
-  手动旋转/横屏适配通过 `SourceManager.applyManualRotationToNative()` 改写
+  手动旋转通过 `SourceManager.applyManualRotationToNative()` 改写
   `updateCameraBaseData` 的 sensorOri/displayOri 生效，改动旋转逻辑时不要只调
   `updateManualRotation`。
 - `NetworkHooker`（HttpURLConnection/OkHttp 网络上传替换）与 `WorkMode` 枚举已删除：前者不再需要，后者无任何使用点。
@@ -283,6 +281,6 @@ flowchart LR
 - [ ] 新增配置：同时在 `SourceManager`（Hook 侧读取）与 `ConfigRepository`（宿主侧读写+远程同步）添加，键名保持 `snake_case` 一致。
 - [ ] 新增 UI：Miuix 组件、字符串进 `strings.xml`（en + zh-rCN）、导航走 `Route` + `Navigator`、ViewModel 经 `ViewModelFactory` 注册。
 - [ ] 改动原生：更新 `NativeBridge` 声明、重新运行 `buildNative` 生成 `jniLibs`、检查 proguard keep。
-- [ ] 构建验证：`.\gradlew.bat assembleDebug` 至少能过编译；改动签名/版本/ABI 时核对 `app/build.gradle` 常量。
+- [ ] 构建验证：统一用 `.\gradlew.bat assembleRelease`（用户要求只构建正式版）；改动签名/版本/ABI 时核对 `app/build.gradle` 常量。
 - [ ] 改动 `Dog` / logcat 解析等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
 - [ ] 编码检查：所有改动文件保持 UTF-8，中文注释在 UTF-8 读取下无乱码。

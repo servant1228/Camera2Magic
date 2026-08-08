@@ -4,11 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.PorterDuff
 import android.graphics.SurfaceTexture
 
-import android.media.ExifInterface
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.ParcelFileDescriptor
@@ -30,7 +28,6 @@ import com.nothing.camera2magic.GlobalState
 import com.nothing.camera2magic.MagicHook
 import com.nothing.camera2magic.utils.Dog
 
-import java.io.FileInputStream
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -84,15 +81,12 @@ class Camera3 {
             val width = (videoSize.width * pixelRatio).toInt()
             val height = videoSize.height
             val rotation = videoSize.unappliedRotationDegrees
-            // 横屏适配：原生引擎把“帧宽高比”和“反向目标宽高比”比较来算缩放，
-            // 横屏对横屏时会产生数倍横向缩放导致画面被压扁；上报交换后的宽高可让缩放归 1
-            val (frameW, frameH) = if (SM.adaptLandscape) height to width else width to height
             lastNaturalW = width
             lastNaturalH = height
             lastRotation = rotation
-            lastFrameW = frameW
-            lastFrameH = frameH
-            NB.updateFrameInfo(frameW, frameH, rotation)
+            lastFrameW = width
+            lastFrameH = height
+            NB.updateFrameInfo(width, height, rotation)
             SM.applyManualRotationToNative()
             surfaceTexture?.setDefaultBufferSize(width, height)
         }
@@ -211,27 +205,15 @@ class Camera3 {
             val bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
                 ?: throw IllegalStateException("decode image failed.")
 
-            // 横屏适配：图片自身 EXIF 方向先烘焙进像素，避免横屏图片在预览里被旋转
-            val oriented = if (SM.adaptLandscape) {
-                val orientation = runCatching {
-                    Os.lseek(fd, 0, OsConstants.SEEK_SET)
-                    ExifInterface(FileInputStream(fd))
-                        .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-                }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-                rotateBitmap(bitmap, orientation)
-            } else bitmap
-
-            // 与视频路径一致：横屏适配时交换帧宽高，避免原生缩放把画面压扁
-            val (frameW, frameH) = if (SM.adaptLandscape) oriented.height to oriented.width else oriented.width to oriented.height
-            lastNaturalW = oriented.width
-            lastNaturalH = oriented.height
+            lastNaturalW = bitmap.width
+            lastNaturalH = bitmap.height
             lastRotation = 0
-            lastFrameW = frameW
-            lastFrameH = frameH
-            NB.updateFrameInfo(frameW, frameH, 0)
+            lastFrameW = bitmap.width
+            lastFrameH = bitmap.height
+            NB.updateFrameInfo(bitmap.width, bitmap.height, 0)
             SM.applyManualRotationToNative()
-            surfaceTexture?.setDefaultBufferSize(oriented.width, oriented.height)
-            cachedBitmap = oriented
+            surfaceTexture?.setDefaultBufferSize(bitmap.width, bitmap.height)
+            cachedBitmap = bitmap
             imageRendering = true
             camera3Handler.post(imageRenderRunnable)
         }.onFailure { e ->
@@ -307,16 +289,4 @@ class Camera3 {
         return inSampleSize
     }
 
-    /** 按图片自身 EXIF 方向旋转到显示方向（正值 = 顺时针）。 */
-    private fun rotateBitmap(src: Bitmap, orientation: Int): Bitmap {
-        val degrees = when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> -90f   // 6
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180f  // 3
-            ExifInterface.ORIENTATION_ROTATE_270 -> 90f   // 8
-            else -> 0f
-        }
-        if (degrees == 0f) return src
-        val matrix = Matrix().apply { postRotate(degrees) }
-        return Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
-    }
 }
