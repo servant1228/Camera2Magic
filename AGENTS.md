@@ -212,8 +212,7 @@ flowchart LR
 - `versionName = 2.0.0`（`major.minor.patch` 手写常量）；
 - `versionCode = versionCodeOffset(0) + git 提交数`（`git rev-list --count HEAD`，
   失败时回退为 1）。项目内已建立 git 仓库（`C:\Users\fdhyr\Camera2Magic`），
-  每次发布前新增提交即可让 versionCode 递增（截至本文档更新时共 2 次提交，
-  versionCode=2）。
+  每次发布前新增提交即可让 versionCode 递增
 
 ### 7.4 依赖与仓库
 
