@@ -270,7 +270,7 @@ flowchart LR
 - `Camera3` 是**单例状态**（companion object 持有 player/surface），多个相机实例
   同时打开时共享同一渲染端，修改需谨慎。
 - `externalNativeBuild` 已启用并指向 `src/main/cpp/CMakeLists.txt`；
-  `buildNative` 由源码构建（libjpeg-turbo 3.0.4 静态链入），原始预编译 `.so` 有备份
+  `buildNative` 由源码构建（libjpeg-turbo 3.1.3 静态链入），原始预编译 `.so` 有备份
   （见反编译报告 evidence/original-so/）。
 - 原生库已从还原成果重建为可编译源码（`app/src/main/cpp/`），JNI 契约与 Kotlin
   `NativeBridge.kt` 一致；新增或修改 native 行为前先读 `docs/reverse/libcamera3/`
