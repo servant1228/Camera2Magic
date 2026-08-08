@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 @Immutable
 data class HomeUiState(
     val moduleEnabled: Boolean = true,
+    val xposedActive: Boolean = false,
     val hookMode: String = "Camera2",
     val currentMediaType: MediaType = MediaType.VIDEO,
     val versionName: String = BuildConfig.VERSION_NAME,
@@ -50,6 +51,11 @@ class HomeViewModel(
         startRunningTimer()
         Dog.enabled = repository.enableLog
         Dog.i(TAG, "Camera2Magic started, module=${repository.moduleEnabled}", repository.enableLog)
+        viewModelScope.launch {
+            repository.xposedActive.collect { active ->
+                _uiState.update { it.copy(xposedActive = active) }
+            }
+        }
         // Delay read of scope list — Xposed service binds asynchronously
         viewModelScope.launch {
             delay(500)
@@ -64,6 +70,7 @@ class HomeViewModel(
         _uiState.update {
             it.copy(
                 moduleEnabled = repository.moduleEnabled,
+                xposedActive = repository.xposedActive.value,
                 currentMediaType = MediaType.fromValue(repository.localMediaType),
                 playSound = repository.playSound,
                 enableLog = repository.enableLog,

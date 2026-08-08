@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 @Immutable
 data class SpotlightUiState(
     val moduleEnabled: Boolean = true,
+    val xposedActive: Boolean = false,
     val isProcessing: Boolean = false,
     val selectedMediaSource: MediaSource = MediaSource.LOCAL,
     val currentType: MediaType = MediaType.VIDEO,
@@ -53,6 +54,11 @@ class SpotlightViewModel(
     init {
         loadInitialSettings()
         performHealthCheckAndRefresh()
+        viewModelScope.launch {
+            repository.xposedActive.collect { active ->
+                _uiState.update { it.copy(xposedActive = active) }
+            }
+        }
     }
 
     fun onModuleToggled() {
@@ -168,6 +174,7 @@ class SpotlightViewModel(
         _uiState.update {
             it.copy(
                 moduleEnabled = repository.moduleEnabled,
+                xposedActive = repository.xposedActive.value,
                 selectedMediaSource = MediaSource.fromValue(repository.mediaSource),
                 currentType = MediaType.fromValue(repository.localMediaType)
             )

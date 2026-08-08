@@ -293,6 +293,6 @@ flowchart LR
 - [ ] 新增 UI：Miuix 组件、字符串进 `strings.xml`（en + zh-rCN）、导航走 `Route` + `Navigator`、ViewModel 经 `ViewModelFactory` 注册。
 - [ ] 改动原生：在本机 `app/src/main/cpp/` 维护源码（不入库），`gradlew buildNative`
       后更新 `jniLibs` 产物、检查 proguard keep；公开仓库只发布预编译 `.so`。
-- [ ] 构建验证：统一用 `.\gradlew.bat assembleRelease`（用户要求只构建正式版）；改动签名/版本/ABI 时核对 `app/build.gradle` 常量（release 签名走 CI secrets / 本地 `keystore.properties`）。
+- [ ] 构建验证：统一用debug验证；改动签名/版本/ABI 时核对 `app/build.gradle` 常量（release 签名走 CI secrets / 本地 `keystore.properties`）。
 - [ ] 改动 `Dog` / logcat 解析等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
 - [ ] 编码检查：所有改动文件保持 UTF-8，中文注释在 UTF-8 读取下无乱码。

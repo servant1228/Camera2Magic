@@ -20,6 +20,8 @@
     <string name="nav_settings">设置</string>
     <string name="home_status_enabled">模块已启用</string>
     <string name="home_status_disabled">模块已禁用</string>
+    <string name="home_status_inactive">模块未激活</string>
+    <string name="home_status_inactive_hint">请先在 LSPosed 中启用模块</string>
     <string name="home_running_format">已运行 %1$d 分 %2$d 秒</string>
     <string name="home_hook_mode">Hook 模式</string>
     <string name="home_media_type">媒体类型</string>

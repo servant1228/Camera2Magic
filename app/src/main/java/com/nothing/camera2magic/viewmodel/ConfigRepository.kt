@@ -7,6 +7,9 @@ import androidx.core.content.edit
 import com.nothing.camera2magic.utils.Dog
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -41,21 +44,32 @@ class ConfigRepository(private val prefs: SharedPreferences) {
     companion object {
         @Volatile
         private var sharedService: XposedService? = null
+
+        private val _xposedActive = MutableStateFlow(false)
     }
+
+    val xposedActive: StateFlow<Boolean> = _xposedActive.asStateFlow()
 
     private var xposedService: XposedService? = null
 
     init {
         xposedService = sharedService
+        if (sharedService != null) {
+            _xposedActive.value = true
+        }
         XposedServiceHelper.registerListener(object : XposedServiceHelper.OnServiceListener {
             override fun onServiceBind(service: XposedService) {
                 xposedService = service
                 sharedService = service
+                _xposedActive.value = true
+                Dog.i(TAG, "xposed service bound", enableLog)
                 syncAllToRemote()
             }
             override fun onServiceDied(service: XposedService) {
                 xposedService = null
                 sharedService = null
+                _xposedActive.value = false
+                Dog.w(TAG, "xposed service died", enableLog)
             }
         })
     }

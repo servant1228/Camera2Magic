@@ -508,6 +508,7 @@ private fun HomePage(bottomPadding: Dp = 0.dp, onNavigateScope: () -> Unit = {})
             item {
                 ActionButtonsSection(
                     moduleEnabled = uiState.moduleEnabled,
+                    xposedActive = uiState.xposedActive,
                     onActivate = { homeViewModel.onModuleActivate() },
                     onDeactivate = { homeViewModel.onModuleDeactivate() },
                 )

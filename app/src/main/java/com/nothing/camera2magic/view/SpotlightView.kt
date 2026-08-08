@@ -105,6 +105,7 @@ fun SpotlightView() {
         ModuleSwitch(
             text = stringResource(R.string.module_switch_name),
             isEnabled = uiState.moduleEnabled,
+            enabled = uiState.xposedActive,
             onToggle = { viewModel.onModuleToggled() }
         )
     }
@@ -274,6 +275,7 @@ private fun ProcessingOverlay(visible: Boolean) {
 private fun ModuleSwitch(
     text: String,
     isEnabled: Boolean,
+    enabled: Boolean = true,
     onToggle: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -297,7 +299,8 @@ private fun ModuleSwitch(
             }
             Switch(
                 checked = isEnabled,
-                onCheckedChange = { onToggle() }
+                onCheckedChange = { onToggle() },
+                enabled = enabled
             )
         }
     }

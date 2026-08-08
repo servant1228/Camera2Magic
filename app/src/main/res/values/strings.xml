@@ -23,6 +23,8 @@
     <string name="nav_settings">Settings</string>
     <string name="home_status_enabled">Module Enabled</string>
     <string name="home_status_disabled">Module Disabled</string>
+    <string name="home_status_inactive">Module Not Activated</string>
+    <string name="home_status_inactive_hint">Enable the module in LSPosed first</string>
     <string name="home_running_format">Running %1$d min %2$d sec</string>
     <string name="home_hook_mode">Hook Mode</string>
     <string name="home_media_type">Media Type</string>

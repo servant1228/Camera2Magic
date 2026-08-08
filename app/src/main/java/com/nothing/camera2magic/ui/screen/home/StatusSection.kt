@@ -62,12 +62,13 @@ private fun StatusContent(
     onNavigateScope: () -> Unit,
 ) {
     val moduleEnabled = uiState.moduleEnabled
-    val statusIcon = if (moduleEnabled) {
+    val status = moduleStatus(uiState.xposedActive, moduleEnabled)
+    val statusIcon = if (status == ModuleStatus.Enabled) {
         Icons.Rounded.CheckCircleOutline
     } else {
         Icons.Rounded.RemoveCircleOutline
     }
-    val runState = if (moduleEnabled) RunState.Running else RunState.Stopped
+    val runState = if (status == ModuleStatus.Enabled) RunState.Running else RunState.Stopped
     val statusTint = StatusColors.runState(runState)
     val statusContainer = StatusColors.runStateContainer(runState)
 
@@ -110,10 +111,10 @@ private fun StatusContent(
                         .padding(all = 16.dp),
                 ) {
                     Text(
-                        text = if (moduleEnabled) {
-                            stringResource(R.string.home_status_enabled)
-                        } else {
-                            stringResource(R.string.home_status_disabled)
+                        text = when (status) {
+                            ModuleStatus.Enabled -> stringResource(R.string.home_status_enabled)
+                            ModuleStatus.Disabled -> stringResource(R.string.home_status_disabled)
+                            ModuleStatus.Inactive -> stringResource(R.string.home_status_inactive)
                         },
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
