@@ -31,6 +31,9 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
 
     companion object {
         private const val TAG = "[CAM2]"
+        // 仅对打卡 App 做“全 Surface 替换”（录制/处理输出面也换成 BlackHole），
+        // 其他作用域内的应用保持旧的只替换预览面（format 1/4）行为，避免误伤。
+        private const val FULL_REPLACE_PACKAGE = "com.xinchuzu.driver"
         private const val CAMERA_DEVICE_IMPL = "android.hardware.camera2.impl.CameraDeviceImpl"
         private const val CAMERA_MANAGER = "android.hardware.camera2.CameraManager"
         private const val CAPTURE_REQUEST_BUILDER = $$"android.hardware.camera2.CaptureRequest$Builder"
@@ -39,6 +42,8 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
         private val extraRenderTargets = Collections.newSetFromMap(WeakHashMap<Surface, Boolean>()) as MutableSet<Surface>
         private val processName: String
             get() = GlobalState.processName
+        private val fullReplaceOutputs: Boolean
+            get() = processName.substringBefore(':') == FULL_REPLACE_PACKAGE
         private val CameraDevice.isActiveRef: Boolean
             get() = activatedCamera.get() == this
     }
@@ -93,7 +98,11 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
     }
 
     private fun Class<*>.onClosedHook() {
-        val onClosed = getDeclaredMethod("onClosed", CameraDevice::class.java)
+        // 部分回调类不重写 onClosed（继承自 CameraDevice.StateCallback），
+        // getDeclaredMethod 找不到会抛 NoSuchMethodException，导致关闭时
+        // BlackHole/Camera3 清理不执行；这里优先找声明方法，找不到再取继承的公有实现。
+        val onClosed = runCatching { getDeclaredMethod("onClosed", CameraDevice::class.java) }
+            .getOrElse { getMethod("onClosed", CameraDevice::class.java) }
         magic.hook(onClosed).intercept { chain ->
             if (!SM.readyForHook) return@intercept chain.proceed()
             val camera = chain.args[0] as CameraDevice
@@ -185,6 +194,12 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
 
                 val modifiedSurfaces = surfaces.map { origin ->
                     val (w, h, f) = NB.getSurfaceInfo(origin)
+                    Dog.i(TAG, "    surface ${origin.shortId} format=$f size=${w}x${h}", SM.enableLog)
+                    if (f == 35) NB.updateAlgorithmSize(w, h)
+                    if (fullReplaceOutputs) {
+                        extraRenderTargets.add(origin)
+                        return@map origin.gocBlackHole
+                    }
                     if (f == 1 || f == 4) return@map origin.gocBlackHole
                     extraRenderTargets.add(origin)
                     return@map origin
@@ -215,6 +230,12 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
             Dog.i(TAG, "[:createCaptureSession] List<Surface>: ${surfaces.size}", SM.enableLog)
             val newList = surfaces.mapTo(ArrayList()) { origin ->
                 val (w, h, f) = NB.getSurfaceInfo(origin)
+                Dog.i(TAG, "    surface ${origin.shortId} format=$f size=${w}x${h}", SM.enableLog)
+                if (f == 35) NB.updateAlgorithmSize(w, h)
+                if (fullReplaceOutputs) {
+                    extraRenderTargets.add(origin)
+                    return@mapTo origin.gocBlackHole
+                }
                 if (f == 1 || f == 4) return@mapTo origin.gocBlackHole
                 extraRenderTargets.add(origin)
                 return@mapTo origin
@@ -251,6 +272,12 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
                 val surfaces = config.surfaces
                 val modifiedSurfaces = surfaces.map { origin ->
                     val (w, h, f) = NB.getSurfaceInfo(origin)
+                    Dog.i(TAG, "    surface ${origin.shortId} format=$f size=${w}x${h}", SM.enableLog)
+                    if (f == 35) NB.updateAlgorithmSize(w, h)
+                    if (fullReplaceOutputs) {
+                        extraRenderTargets.add(origin)
+                        return@map origin.gocBlackHole
+                    }
                     if (f == 1 || f == 4) return@map origin.gocBlackHole
                     extraRenderTargets.add(origin)
                     return@map origin
@@ -269,8 +296,12 @@ class Camera2Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
             val (width, height, format) = NB.getSurfaceInfo(origin)
             Dog.i(TAG, "[:addTarget] ${origin.shortId}, format: $format, size: ${width}x${height}", SM.enableLog)
 
-            if (format == 1 || format == 4) return@intercept chain.proceed(arrayOf(origin.gocBlackHole))
             if (format == 35) NB.updateAlgorithmSize(width, height)
+            if (fullReplaceOutputs) {
+                extraRenderTargets.add(origin)
+                return@intercept chain.proceed(arrayOf(origin.gocBlackHole))
+            }
+            if (format == 1 || format == 4) return@intercept chain.proceed(arrayOf(origin.gocBlackHole))
             return@intercept chain.proceed()
         }
     }
