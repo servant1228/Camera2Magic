@@ -37,6 +37,53 @@ def startTasks = gradle.startParameter.taskNames
 def isExplicitNativeBuild = startTasks.any { it.contains("buildNative") }
 def hasNativeSource = file("src/main/cpp/CMakeLists.txt").exists()
 
+// ---- Release 签名解析（优先级：CI secrets > 本地 keystore.properties）----
+def signingStoreFile = null
+def signingStorePassword = null
+def signingKeyAlias = null
+def signingKeyPassword = null
+
+def envKeystoreB64 = System.getenv("CAM2MAGIC_KEYSTORE_B64")
+def envKeystorePath = System.getenv("CAM2MAGIC_KEYSTORE")
+if (envKeystoreB64) {
+    def ksDir = file("${buildDir}/cam2magic-keystore")
+    ksDir.mkdirs()
+    def ksFile = new File(ksDir, "cam2magic.keystore")
+    ksFile.bytes = envKeystoreB64.decodeBase64()
+    signingStoreFile = ksFile
+    signingStorePassword = System.getenv("CAM2MAGIC_KEYSTORE_PASSWORD")
+    signingKeyAlias = System.getenv("CAM2MAGIC_KEY_ALIAS")
+    signingKeyPassword = System.getenv("CAM2MAGIC_KEY_PASSWORD")
+} else if (envKeystorePath) {
+    def ksFile = file(envKeystorePath)
+    if (!ksFile.exists()) {
+        throw new GradleException("CAM2MAGIC_KEYSTORE 不存在: ${ksFile.absolutePath}")
+    }
+    signingStoreFile = ksFile
+    signingStorePassword = System.getenv("CAM2MAGIC_KEYSTORE_PASSWORD")
+    signingKeyAlias = System.getenv("CAM2MAGIC_KEY_ALIAS")
+    signingKeyPassword = System.getenv("CAM2MAGIC_KEY_PASSWORD")
+} else {
+    def propsFile = file("keystore.properties")
+    if (propsFile.exists()) {
+        def props = new Properties()
+        propsFile.withInputStream { props.load(it) }
+        signingStoreFile = file(props.getProperty("storeFile"))
+        signingStorePassword = props.getProperty("storePassword")
+        signingKeyAlias = props.getProperty("keyAlias")
+        signingKeyPassword = props.getProperty("keyPassword")
+    }
+}
+
+def hasReleaseSigning = signingStoreFile != null && signingStoreFile.exists() &&
+        signingStorePassword != null && signingKeyAlias != null && signingKeyPassword != null
+
+if (hasReleaseSigning) {
+    println ">>> Release 签名已配置: ${signingStoreFile.name} <<<"
+} else {
+    println ">>> [警告] 未找到 Release 签名（CI secrets 或 app/keystore.properties），将产出未签名 APK <<<"
+}
+
 android {
 
     namespace 'com.nothing.camera2magic'
@@ -82,16 +129,20 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("cam2magic.keystore")
-            storePassword "camera2"
-            keyAlias "cam2magic"
-            keyPassword "camera2"
+            if (hasReleaseSigning) {
+                storeFile signingStoreFile
+                storePassword signingStorePassword
+                keyAlias signingKeyAlias
+                keyPassword signingKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

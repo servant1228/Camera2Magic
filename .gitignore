@@ -27,3 +27,7 @@ Thumbs.db
 # 本地私有源码/文档：仅本机保留，不入库（公开仓库不含）
 /docs/
 /app/src/main/cpp/
+
+# Release 签名（密钥由 CI secrets 托管；本地密钥/配置不入库）
+app/cam2magic.keystore
+app/keystore.properties

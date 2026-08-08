@@ -39,7 +39,8 @@
 Camera2Magic/
 ├── app/
 │   ├── build.gradle                 # 版本、签名、ABI split、打包 jniLibs
-│   ├── cam2magic.keystore           # release 签名（密码 camera2，见构建规范）
+│   ├── cam2magic.keystore*          # 本地 release 密钥（gitignored，不入库）
+│   ├── keystore.properties*         # 本地 release 签名配置（gitignored，不入库）
 │   ├── proguard-rules.pro           # keep native 方法与 com.nothing.camera2magic.**
 │   └── src/main/
 │       ├── AndroidManifest.xml      # 单 Activity，QUERY_ALL_PACKAGES + FileProvider
@@ -188,8 +189,9 @@ flowchart LR
 - 直接使用 `src/main/jniLibs` 预编译的 `libcamera3.so`；
 - 公开仓库不含原生源码，构建直接用 `jniLibs`；本机有源码时仍可 `buildNative`
   （源码缺失时自动跳过 CMake 配置）；
-- release 使用 `app/cam2magic.keystore` 签名（storePassword/keyPassword/alias 均为
-  `camera2` / `cam2magic`），`minifyEnabled true + shrinkResources true`；
+- release 签名：优先读取 CI secrets（`CAM2MAGIC_KEYSTORE_B64` + 密码/别名变量），
+  本地则读 `app/keystore.properties`（gitignored）；两者都没有时产出未签名 APK；
+  `minifyEnabled true + shrinkResources true`；
 - ABI split 只产出 **arm64-v8a**（`splits.abi.include`），输出名
   `CAM2Magic-2.0.0-arm64-v8a.apk`（`androidComponents.onVariants` 重命名）。
 
@@ -220,6 +222,14 @@ flowchart LR
 - `settings.gradle`：google() + mavenCentral() + `api.xposed.info` + jitpack；新增依赖需更新
   `gradle/libs.versions.toml`（version catalog 风格，禁止在 build.gradle 里硬编码新版本号）。
 
+### 7.5 CI 签名（GitHub Actions）
+
+`.github/workflows/build-release.yml` 在推送 `v*` tag 或手动触发时构建并签名 release APK。
+所需仓库 secrets：
+- `CAM2MAGIC_KEYSTORE_B64`：keystore 的 Base64；
+- `CAM2MAGIC_KEYSTORE_PASSWORD` / `CAM2MAGIC_KEY_PASSWORD` / `CAM2MAGIC_KEY_ALIAS`。
+密钥文件不入库；本地 release 构建通过 `app/keystore.properties` 提供签名。
+
 ## 8. 编码与工具规范（重要）
 
 1. **所有源文件均为 UTF-8（无 BOM）编码**，含中文注释与资源。
@@ -247,8 +257,9 @@ flowchart LR
    新增页面文案进 `res/values/strings.xml`（英文）+ `values-zh-rCN/strings.xml`（中文）。
 9. 导航：新增页面在 `Route` sealed 层级加 @Serializable 条目，`Navigator.push/pop`，
    导航栈经 kotlinx.serialization JSON 持久化（`NavBackStackSaver`）。
-10. 不修改 `app/cam2magic.keystore`、`proguard-rules.pro` 中 native keep 规则、
-    以及 `jniLibs/*/libcamera3.so` 的 ABI 目录结构。
+10. 不修改 `proguard-rules.pro` 中 native keep 规则、以及 `jniLibs/*/libcamera3.so`
+    的 ABI 目录结构；release 签名密钥由 CI secrets / 本地 `keystore.properties`
+    提供，密钥文件不入库。
 
 ## 9. 已知坑与遗留问题（改动前必读）
 
@@ -280,6 +291,6 @@ flowchart LR
 - [ ] 新增 UI：Miuix 组件、字符串进 `strings.xml`（en + zh-rCN）、导航走 `Route` + `Navigator`、ViewModel 经 `ViewModelFactory` 注册。
 - [ ] 改动原生：在本机 `app/src/main/cpp/` 维护源码（不入库），`gradlew buildNative`
       后更新 `jniLibs` 产物、检查 proguard keep；公开仓库只发布预编译 `.so`。
-- [ ] 构建验证：统一用 `.\gradlew.bat assembleRelease`（用户要求只构建正式版）；改动签名/版本/ABI 时核对 `app/build.gradle` 常量。
+- [ ] 构建验证：统一用 `.\gradlew.bat assembleRelease`（用户要求只构建正式版）；改动签名/版本/ABI 时核对 `app/build.gradle` 常量（release 签名走 CI secrets / 本地 `keystore.properties`）。
 - [ ] 改动 `Dog` / logcat 解析等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
 - [ ] 编码检查：所有改动文件保持 UTF-8，中文注释在 UTF-8 读取下无乱码。
