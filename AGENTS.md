@@ -9,7 +9,7 @@
 **LSPosed / libxposed（API 102）** 的 **Android 虚拟摄像头模块**：
 
 - 用户在宿主 App 中选择本地视频 / 图片作为“虚拟摄像头”内容；
-- 当被 Hook 的应用（scope 当前只有 `tv.danmaku.bili` 哔哩哔哩）调用
+- 当被 Hook 的应用调用
   Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，
   模块用所选媒体替换真实画面；
 - 宿主 App 与 Hook 进程通过 `XposedService` IPC 共享配置和媒体文件。
@@ -128,7 +128,7 @@ flowchart LR
 | `module.prop` | `id=com.nothing.camera2magic`，min/targetApiVersion=102 | LSPosed 模块声明 |
 | `java_init.list` | `com.nothing.camera2magic.MagicHook` | Java 入口类 |
 | `native_init.list` | `camera3` | 原生初始化入口（`System.loadLibrary("camera3")`） |
-| `scope.list` | `tv.danmaku.bili` | 静态作用域：仅哔哩哔哩（`staticScope=false`） |
+| `scope.list` | `tv.danmaku.bili` | 静态作用域： |
 
 ## 5. 关键类速查表
 
