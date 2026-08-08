@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.geometry.Size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -50,12 +51,17 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -109,6 +115,9 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurDefaults
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -123,6 +132,7 @@ import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.GridView
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.squircle.addSquircleRect
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -229,10 +239,24 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
 
     val bottomBarBackdrop = rememberBlurBackdrop()
     val bottomBarBlurActive = bottomBarBackdrop != null
-    val bottomBarColor = MiuixTheme.colorScheme.surface
-    val isIosFloating = themeConfig.floatingBottomBar && themeConfig.floatingBottomBarStyle == FloatingBottomBarStyle.IosLike
-    val floatingBarColor = if (isIosFloating && bottomBarBlurActive) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
+    val bottomBarColor = if (bottomBarBlurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+    val floatingBarColor = if (bottomBarBlurActive) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
     val floatingPillRadius = 50.dp
+    val floatingBarShape = remember(floatingPillRadius) { SquirclePillShape(floatingPillRadius) }
+    val floatingBarBlurModifier = if (bottomBarBackdrop != null) {
+        Modifier.textureBlur(
+            backdrop = bottomBarBackdrop,
+            shape = floatingBarShape,
+            blurRadius = 25f,
+            colors = BlurDefaults.blurColors(
+                blendColors = listOf(
+                    BlendColorEntry(color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f)),
+                ),
+            ),
+        )
+    } else {
+        Modifier
+    }
 
     val navigationItems = listOf(
         NavigationItem(label = stringResource(R.string.nav_home), icon = MiuixIcons.Home),
@@ -281,6 +305,7 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                             )
                         } else {
                             FloatingNavigationBar(
+                                modifier = floatingBarBlurModifier,
                                 color = floatingBarColor,
                                 cornerRadius = floatingPillRadius,
                             ) {
@@ -419,6 +444,24 @@ private fun MiuixFloatingNavigationBarItem(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/**
+ * Squircle 形状（与 Miuix `squircleBackground` 同源的连续圆角），
+ * 用于悬浮底栏毛玻璃的模糊区域裁剪。
+ */
+private class SquirclePillShape(private val cornerRadius: Dp) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val radius = with(density) { cornerRadius.toPx() }
+        val path = Path().apply {
+            addSquircleRect(
+                width = size.width,
+                height = size.height,
+                cornerRadius = radius,
+            )
+        }
+        return Outline.Generic(path)
     }
 }
 
