@@ -224,7 +224,10 @@ flowchart LR
 
 ### 7.5 CI 签名（GitHub Actions）
 
-`.github/workflows/build-release.yml` 在推送 `v*` tag 或手动触发时构建并签名 release APK。
+`.github/workflows/build-release.yml` 在推送 `master` 分支（或 `v*` tag、手动触发）时
+自动构建并签名 release APK。**正式发布流程**：本地先 `gradlew buildNative` 更新
+`app/src/main/jniLibs/arm64-v8a/libcamera3.so`，提交并推送 `master`，CI 即用该 `.so`
+产出签名正式版 APK（versionCode 随提交数递增）。
 所需仓库 secrets：
 - `CAM2MAGIC_KEYSTORE_B64`：keystore 的 Base64；
 - `CAM2MAGIC_KEYSTORE_PASSWORD` / `CAM2MAGIC_KEY_PASSWORD` / `CAM2MAGIC_KEY_ALIAS`。
