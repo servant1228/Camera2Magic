@@ -158,10 +158,6 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         get() = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
         set(value) = save("main_manually_rotate", value)
 
-    var compressJpeg: Boolean
-        get() = prefs.getBoolean("main_compress_jpeg", true)
-        set(value) = save("main_compress_jpeg", value)
-
     /** 拍照时忽略原相机 EXIF 方向，让照片保持媒体自身方向 */
     var fixPhotoRotation: Boolean
         get() = prefs.getBoolean("main_fix_photo_rotation", false)

@@ -121,7 +121,7 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                         // 始终按原图大小匹配质量：既避免超出缓冲区被截断，也贴近 App 的尺寸/大小校验
                                         var bestJpeg = byteArrayOf()
                                         var bestDiff = Int.MAX_VALUE
-                                        var lo = if (SM.compressJpeg) 60 else 85
+                                        var lo = 60
                                         var hi = 100
                                         while (lo <= hi) {
                                             val mid = (lo + hi) / 2

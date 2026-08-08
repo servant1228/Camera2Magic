@@ -164,7 +164,6 @@ flowchart LR
 | --- | --- | --- |
 | `main_module_enabled` | Boolean=true | 模块总开关 |
 | `main_play_sound` / `main_enable_log` / `main_show_toast` | Boolean=false/false/true | 播放声音 / 日志 / Toast |
-| `main_compress_jpeg` | Boolean=true | 拍照替换时压缩 JPEG |
 | `main_inject_menu` | Boolean=false | 向目标相机应用注入菜单（当前仅宿主 UI 开关，Hook 侧尚未实现） |
 | `main_fix_photo_rotation` | Boolean=false | 拍照旋转修正：忽略相机 EXIF，按媒体自身方向烘焙 |
 | `main_manually_rotate` | Int=0 | 手动旋转（0/90/180/270 索引） |

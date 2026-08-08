@@ -79,8 +79,6 @@
     <string name="quick_entry_enable_log_summary">Enable logging for debugging</string>
     <string name="quick_entry_inject_menu_summary">Inject menu into camera app</string>
     <string name="quick_entry_manually_rotate_summary">Override camera frame rotation</string>
-    <string name="quick_entry_compress_jpeg">Control JPEG Output Quality</string>
-    <string name="quick_entry_compress_jpeg_summary">Enable smart photo compression for certain apps</string>
     <string name="quick_entry_fix_photo_rotation">Fix Photo Rotation</string>
     <string name="quick_entry_fix_photo_rotation_summary">Bake rotation into the photo and keep camera EXIF, so apps that draw watermarks stay correct</string>
     <string name="common_back">Back</string>

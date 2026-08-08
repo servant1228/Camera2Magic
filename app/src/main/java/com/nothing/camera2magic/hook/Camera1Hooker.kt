@@ -271,7 +271,7 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
                 var bestJpeg = byteArrayOf()
                 var bestDiff = Int.MAX_VALUE
                 val bos = java.io.ByteArrayOutputStream()
-                var lo = if (SM.compressJpeg) 60 else 85
+                var lo = 60
                 var hi = 100
                 while (lo <= hi) {
                     val mid = (lo + hi) / 2

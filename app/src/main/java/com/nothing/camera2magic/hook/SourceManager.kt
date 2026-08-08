@@ -39,9 +39,6 @@ object SourceManager {
     var showToast: Boolean = true
         private set
     @Volatile
-    var compressJpeg: Boolean = true
-        private set
-    @Volatile
     var fixPhotoRotation: Boolean = false
         private set
     @Volatile
@@ -184,10 +181,9 @@ object SourceManager {
             playSound = prefs.getBoolean(KEY_PLAY_SOUND, false)
             enableLog = prefs.getBoolean(KEY_ENABLE_LOG, false)
             showToast = prefs.getBoolean(KEY_SHOW_TOAST, true)
-            compressJpeg = prefs.getBoolean("main_compress_jpeg", true)
             fixPhotoRotation = prefs.getBoolean("main_fix_photo_rotation", false)
             manuallyRotate = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
-            Dog.w(TAG, "refreshPrefs: manuallyRotate=$manuallyRotate, compressJpeg=$compressJpeg", true)
+            Dog.w(TAG, "refreshPrefs: manuallyRotate=$manuallyRotate", true)
 
             mediaSource = prefs.getInt(KEY_MEDIA_SOURCE, 0)
             mediaType = prefs.getInt(KEY_LOCAL_MEDIA_TYPE, 0)

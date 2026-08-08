@@ -108,14 +108,6 @@ fun SettingsScreenContent(
                         onCheckedChange = { viewModel.onShowToastChanged(it) },
                     )
                 },
-                CardItem("compressJpeg") {
-                    SwitchPreference(
-                        title = stringResource(R.string.quick_entry_compress_jpeg),
-                        summary = stringResource(R.string.quick_entry_compress_jpeg_summary),
-                        checked = uiState.compressJpeg,
-                        onCheckedChange = { viewModel.onCompressJpegChanged(it) },
-                    )
-                },
                 CardItem("fixPhotoRotation") {
                     SwitchPreference(
                         title = stringResource(R.string.quick_entry_fix_photo_rotation),
