@@ -15,6 +15,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # 需要完整历史：versionCode = git 提交数（git rev-list --count HEAD）
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

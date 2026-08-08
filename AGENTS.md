@@ -63,15 +63,15 @@ Camera2Magic/
 │       │   └── viewmodel/           # ConfigRepository + 4 个 ViewModel + Factory + CompositionLocals
 │       ├── res/values{, -zh-rCN}/strings.xml  # 英文 + 中文文案
 │       ├── res/xml/file_paths.xml   # FileProvider 导出路径
-│       ├── jniLibs/{arm64-v8a}/libcamera3.so   # 预编译原生库（闭源第三方，源码不入库）
+│       ├── jniLibs/{arm64-v8a}/libcamera3.so   # 预编译原生库（闭源，源码不入库）
 │       └── resources/META-INF/xposed/  # module.prop / java_init.list / native_init.list / scope.list
 ├── app/src/test/                   # 单元测试（LogcatParserTest 等）
 ├── build.gradle / settings.gradle / gradle.properties / gradle/libs.versions.toml
 └── local.properties                # 本机 SDK 路径，不入库
 ```
 
-> 注意：公开仓库只含预编译 `.so`；`app/src/main/cpp/`（原生源码）与 `docs/`（逆向
-> 文档）仅存在于本地工作区，已加入 `.gitignore` 不入库。常规构建直接使用 `jniLibs`。
+> 注意：公开仓库只含预编译 `.so`，原生源码仅在本地工作区维护（`app/src/main/cpp/`，
+> 已加入 `.gitignore` 不入库）。常规构建直接使用 `jniLibs`。
 
 ## 4. 核心架构与数据流
 
@@ -198,8 +198,8 @@ flowchart LR
 ### 7.2 原生库说明（本地源码构建）
 
 公开仓库只包含预编译闭源 `.so`（`app/src/main/jniLibs/arm64-v8a/`），**不含源码**。
-原生源码 `app/src/main/cpp/` 与逆向文档 `docs/` 仅保留在本地工作区（已 gitignore，
-不会提交）。本机存在源码时，`build.gradle` 会自动启用 CMake 配置并注册 `buildNative`：
+原生源码 `app/src/main/cpp/` 仅保留在本地工作区（已 gitignore，不会提交）。本机存在
+源码时，`build.gradle` 会自动启用 CMake 配置并注册 `buildNative`：
 
 ```powershell
 .\gradlew.bat buildNative
@@ -280,8 +280,7 @@ flowchart LR
   同时打开时共享同一渲染端，修改需谨慎。
 - 原生库为预编译闭源 `.so`；原生源码仅本地保留（`app/src/main/cpp/`，已 gitignore），
   `buildNative` 仅在本机源码存在时可执行，公开仓库不含源码。
-- JNI 契约以 Kotlin `NativeBridge.kt` 为准；`.so` 为闭源产物，逆向文档（`docs/`）
-  仅本地保留，不入库。
+- JNI 契约以 Kotlin `NativeBridge.kt` 为准；`.so` 为闭源产物，源码不公开。
 - 项目 git 仓库位于项目目录内，已初始化并有提交；`versionCode` 随提交数递增。
 
 ## 10. 改动 Checklist（AI 自检）
