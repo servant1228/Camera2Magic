@@ -79,7 +79,7 @@ import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
-data class ScopeApp(val packageName: String, val label: String, val isSystem: Boolean, val mediaMode: String = "global")
+data class ScopeApp(val packageName: String, val label: String, val isSystem: Boolean, val mediaMode: String = "photo")
 
 @Composable
 fun ScopeScreen(
@@ -327,7 +327,7 @@ private fun loadScopeApps(context: android.content.Context, scopePackages: List<
                     packageName = pkg,
                     label = pm.getApplicationLabel(info).toString(),
                     isSystem = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
-                    mediaMode = mediaModes[pkg] ?: "global",
+                    mediaMode = mediaModes[pkg] ?: "photo",
                 )
             }.getOrNull()
         }.sortedBy { it.label.lowercase() }

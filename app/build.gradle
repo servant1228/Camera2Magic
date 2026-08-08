@@ -286,7 +286,6 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
     implementation "com.google.accompanist:accompanist-permissions:0.37.3"
     implementation libs.androidx.media3.exoplayer
-    implementation libs.androidx.media3.exoplayer.rtsp
 
     implementation libs.miuix.ui
     implementation libs.miuix.squircle

@@ -20,7 +20,6 @@ data class HomeUiState(
     val moduleEnabled: Boolean = true,
     val xposedActive: Boolean = false,
     val hookMode: String = "Camera2",
-    val currentMediaType: MediaType = MediaType.VIDEO,
     val versionName: String = BuildConfig.VERSION_NAME,
     val runningTimeSeconds: Long = 0L,
     val playSound: Boolean = false,
@@ -71,7 +70,6 @@ class HomeViewModel(
             it.copy(
                 moduleEnabled = repository.moduleEnabled,
                 xposedActive = repository.xposedActive.value,
-                currentMediaType = MediaType.fromValue(repository.localMediaType),
                 playSound = repository.playSound,
                 enableLog = repository.enableLog,
                 injectMenu = repository.injectMenu,
@@ -110,11 +108,6 @@ class HomeViewModel(
         repository.moduleEnabled = false
         _uiState.update { it.copy(moduleEnabled = false) }
         Dog.w(TAG, "module deactivated", repository.enableLog)
-    }
-
-    fun onMediaTypeChanged(type: MediaType) {
-        repository.localMediaType = type.value
-        _uiState.update { it.copy(currentMediaType = type) }
     }
 
     fun onPlaySoundToggled() {

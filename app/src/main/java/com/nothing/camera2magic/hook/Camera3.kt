@@ -136,7 +136,6 @@ class Camera3 {
             init()
             val (name, type) = validMedia
             when (type) {
-                MagicType.NETWORK_RTSP -> handleNetworkRtsp(name)
                 MagicType.LOCAL_VIDEO  -> {
                     pfd = magic.openRemoteFile(name)
                     pfd?.let { handleLocalVideo(it) }
@@ -146,19 +145,6 @@ class Camera3 {
                     pfd = magic.openRemoteFile(name)
                     pfd?.let { handleLocalImage(it) }
                 }
-            }
-        }
-    }
-
-    private fun handleNetworkRtsp(rtspUrl: String) {
-        val volumeValue = if (SM.playSound) 1f else 0f
-        camera3Handler.post {
-            player?.apply {
-                volume = volumeValue
-                setVideoSurface(surface)
-                setMediaItem(MediaItem.fromUri(rtspUrl))
-                prepare()
-                playWhenReady = true
             }
         }
     }

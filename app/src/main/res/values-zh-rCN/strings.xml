@@ -5,13 +5,7 @@
     <string name="permission_rationale_title">需要媒体权限</string>
     <string name="permission_rationale_description">为了加载您的视频和图片作为虚拟摄像头内容，应用需要访问您设备上的媒体文件。</string>
     <string name="grant_permission_button_name">授予权限</string>
-    <string-array name="media_source">
-        <item>本地媒体</item>
-        <item>网络视频</item>
-    </string-array>
     <string name="module_switch_name">开启模块</string>
-    <string name="spotlight_delete_media">清除媒体</string>
-    <string name="spotlight_no_media_selected">未选择媒体文件</string>
     <string name="home_device_model">机型</string>
     <string name="home_device_system">系统</string>
     <string name="nav_home">主页</string>
@@ -24,9 +18,6 @@
     <string name="home_status_inactive_hint">请先在 LSPosed 中启用模块</string>
     <string name="home_running_format">已运行 %1$d 分 %2$d 秒</string>
     <string name="home_hook_mode">Hook 模式</string>
-    <string name="home_media_type">媒体类型</string>
-    <string name="home_media_type_video">视频</string>
-    <string name="home_media_type_image">图片</string>
     <string name="home_activate_module">开启模块</string>
     <string name="home_deactivate_module">关闭模块</string>
     <string name="quick_entry_play_sound">播放声音</string>
@@ -100,7 +91,6 @@
     <string name="app_config_title">应用配置</string>
     <string name="app_config_enable_hook">启用 Hook</string>
     <string name="app_config_profile">配置</string>
-    <string name="app_config_follow_global">跟随全局</string>
     <string name="app_config_photo">照片</string>
     <string name="app_config_video">视频</string>
     <string name="app_config_select_photo">选择照片</string>

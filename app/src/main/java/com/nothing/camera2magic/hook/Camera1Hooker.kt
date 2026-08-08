@@ -407,7 +407,7 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
                 newArgs[0] = replaced
                 Dog.w(TAG, "image JPEG replaced in ${SystemClock.elapsedRealtime() - t0}ms, newJpegSize=${replaced.size}, total=${SystemClock.elapsedRealtime() - lastTakePictureAt}ms", SM.enableLog)
             } else {
-                // 非图片媒体（视频/RTSP）仍走原生 JPEG
+                // 非图片媒体（视频）仍走原生 JPEG
                 newArgs[0] = NB.overwriteJPEGBytes()
                 val newSize = (newArgs.getOrNull(0) as? ByteArray)?.size ?: -1
                 Dog.w(TAG, "native overwriteJPEGBytes done in ${SystemClock.elapsedRealtime() - t0}ms, newJpegSize=$newSize, total=${SystemClock.elapsedRealtime() - lastTakePictureAt}ms", SM.enableLog)

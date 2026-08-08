@@ -18,28 +18,6 @@ import java.io.InputStream
 private const val TAG = "[VCX][ConfigRepo]"
 private const val GROUP_NAME = "camera_magic_config"
 
-enum class MediaSource(val value: Int, val label: String) {
-    LOCAL(0, "Local"),
-    NETWORK(1, "Network");
-    companion object {
-        fun fromValue(value: Int): MediaSource {
-            return entries.find { it.value == value }
-                ?: throw IllegalArgumentException("Invalid MediaSource value: $value")
-        }
-    }
-}
-
-enum class MediaType(val value: Int, val label: String) {
-    VIDEO(0, "video"),
-    IMAGE(1, "image");
-    companion object {
-        fun fromValue(value: Int): MediaType {
-            return entries.find { it.value == value }
-                ?: throw IllegalArgumentException("Invalid MediaType value: $value")
-        }
-    }
-}
-
 class ConfigRepository(private val prefs: SharedPreferences) {
     companion object {
         @Volatile
@@ -177,46 +155,6 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean("main_fix_photo_rotation", false)
         set(value) = save("main_fix_photo_rotation", value)
 
-    var mediaSource: Int
-        get() = prefs.getInt("media_source", 0)
-        set(value) {
-            if (value !in MediaSource.entries.map { it.value }) {
-                throw IllegalArgumentException("Invalid MediaSource value: $value")
-            } else {
-                save("media_source", value)
-            }
-        }
-
-    var localMediaType: Int
-        get() = prefs.getInt("local_media_type", 0)
-        set(value) {
-            if (value !in MediaType.entries.map { it.value }) {
-                throw IllegalArgumentException("Invalid MediaType value: $value")
-            } else {
-                save("local_media_type", value)
-            }
-        }
-
-    var videoUri: String?
-        get() = prefs.getString("local_video_uri", null)
-        set(value) = save("local_video_uri", value)
-
-    var remoteVideoFile: String?
-        get() = prefs.getString("remote_video_file", null)
-        set(value) = save("remote_video_file", value)
-
-    var imageUri: String?
-        get() = prefs.getString("local_image_uri", null)
-        set(value) = save("local_image_uri", value)
-
-    var remoteImageFile: String?
-        get() = prefs.getString("remote_image_file", null)
-        set(value) = save("remote_image_file", value)
-
-    var rtspUri: String?
-        get() = prefs.getString("network_rtsp_uri", null)
-        set(value) = save("network_rtsp_uri", value)
-
     var hookMode: String
         get() = prefs.getString("main_hook_mode", "Camera2") ?: "Camera2"
         set(value) = save("main_hook_mode", value)
@@ -284,7 +222,7 @@ class ConfigRepository(private val prefs: SharedPreferences) {
     }
 
     fun getAppMediaMode(packageName: String): String =
-        prefs.getString("app_media_mode_$packageName", "global") ?: "global"
+        prefs.getString("app_media_mode_$packageName", "photo") ?: "photo"
 
     fun setAppMediaMode(packageName: String, mode: String) =
         save("app_media_mode_$packageName", mode)

@@ -4,17 +4,7 @@
     <string name="permission_rationale_title">Media Access Required</string>
     <string name="permission_rationale_description">To load your selected videos and images for the virtual camera, the app needs permission to access media files on your device.</string>
     <string name="grant_permission_button_name">Grant Permission</string>
-    <string-array name="media_source">
-        <item>Local</item>
-        <item>Network</item>
-    </string-array>
-    <string-array name="local_media_type">
-        <item>Video</item>
-        <item>Image</item>
-    </string-array>
     <string name="module_switch_name">Enable Module</string>
-    <string name="spotlight_delete_media">Clear media</string>
-    <string name="spotlight_no_media_selected">No media selected</string>
     <string name="home_device_model">Model</string>
     <string name="home_device_system">System</string>
     <string name="nav_home">Home</string>
@@ -27,9 +17,6 @@
     <string name="home_status_inactive_hint">Enable the module in LSPosed first</string>
     <string name="home_running_format">Running %1$d min %2$d sec</string>
     <string name="home_hook_mode">Hook Mode</string>
-    <string name="home_media_type">Media Type</string>
-    <string name="home_media_type_video">Video</string>
-    <string name="home_media_type_image">Image</string>
     <string name="home_activate_module">Activate Module</string>
     <string name="home_deactivate_module">Deactivate Module</string>
     <string name="quick_entry_play_sound">Play Sound</string>
@@ -103,7 +90,6 @@
     <string name="app_config_title">App Config</string>
     <string name="app_config_enable_hook">Enable Hook</string>
     <string name="app_config_profile">Config</string>
-    <string name="app_config_follow_global">Follow Global</string>
     <string name="app_config_photo">Photo</string>
     <string name="app_config_video">Video</string>
     <string name="app_config_select_photo">Select Photo</string>

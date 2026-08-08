@@ -11,9 +11,6 @@ class ViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
-            modelClass.isAssignableFrom(SpotlightViewModel::class.java) -> {
-                SpotlightViewModel(app, repository) as T
-            }
             modelClass.isAssignableFrom(SettingsViewModel::class.java) -> {
                 SettingsViewModel(app, repository) as T
             }

@@ -84,7 +84,6 @@ import com.nothing.camera2magic.ui.navigation3.Navigator
 import com.nothing.camera2magic.ui.navigation3.Route
 import com.nothing.camera2magic.ui.screen.home.ActionButtonsSection
 import com.nothing.camera2magic.ui.screen.home.DeviceInfoCard
-import com.nothing.camera2magic.ui.screen.home.MediaSection
 import com.nothing.camera2magic.ui.screen.home.statusSection
 import com.nothing.camera2magic.ui.screen.log.LogScreen
 import com.nothing.camera2magic.ui.screen.scope.ScopeScreen
@@ -514,7 +513,6 @@ private fun HomePage(bottomPadding: Dp = 0.dp, onNavigateScope: () -> Unit = {})
                 )
             }
             item { DeviceInfoCard() }
-            item { MediaSection() }
             item { Spacer(Modifier.height(24.dp)) }
         }
     }

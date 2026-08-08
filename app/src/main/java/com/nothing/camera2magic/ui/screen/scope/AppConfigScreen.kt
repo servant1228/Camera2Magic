@@ -94,7 +94,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
-private enum class MediaMode { GLOBAL, PHOTO, VIDEO }
+private enum class MediaMode { PHOTO, VIDEO }
 
 @Composable
 fun AppConfigScreen(
@@ -112,9 +112,8 @@ fun AppConfigScreen(
 
     var hookEnabled by remember { mutableStateOf(repository.getAppHookEnabled(packageName)) }
     val initMode = when (repository.getAppMediaMode(packageName)) {
-        "photo" -> MediaMode.PHOTO
         "video" -> MediaMode.VIDEO
-        else -> MediaMode.GLOBAL
+        else -> MediaMode.PHOTO
     }
     var mediaMode by remember { mutableStateOf(initMode) }
     var photoUri by remember { mutableStateOf(repository.getAppPhotoUri(packageName)) }
@@ -152,7 +151,6 @@ fun AppConfigScreen(
                 videoUri = uri.toString()
                 repository.setAppVideoUri(packageName, uri.toString())
             }
-            MediaMode.GLOBAL -> return@rememberLauncherForActivityResult
         }
         scope.launch(Dispatchers.IO) {
             val mimeType = context.contentResolver.getType(uri)
@@ -167,7 +165,6 @@ fun AppConfigScreen(
                 when (mode) {
                     MediaMode.PHOTO -> repository.setAppRemotePhoto(packageName, fileName)
                     MediaMode.VIDEO -> repository.setAppRemoteVideo(packageName, fileName)
-                    MediaMode.GLOBAL -> {}
                 }
             }
         }
@@ -244,7 +241,6 @@ fun AppConfigScreen(
                                     when (mode) {
                                         MediaMode.PHOTO -> ActivityResultContracts.PickVisualMedia.ImageOnly
                                         MediaMode.VIDEO -> ActivityResultContracts.PickVisualMedia.VideoOnly
-                                        MediaMode.GLOBAL -> ActivityResultContracts.PickVisualMedia.ImageOnly
                                     }
                                 )
                             )
@@ -341,11 +337,10 @@ private fun AppConfigInner(
             outerBottomPadding = 12.dp,
         ) {
             val list = listOf(
-                stringResource(R.string.app_config_follow_global),
                 stringResource(R.string.app_config_photo),
                 stringResource(R.string.app_config_video),
             )
-            val modes = listOf(MediaMode.GLOBAL, MediaMode.PHOTO, MediaMode.VIDEO)
+            val modes = listOf(MediaMode.PHOTO, MediaMode.VIDEO)
             val selectedIndex = modes.indexOf(mediaMode)
             OverlayDropdownPreference(
                 title = stringResource(R.string.app_config_profile),
