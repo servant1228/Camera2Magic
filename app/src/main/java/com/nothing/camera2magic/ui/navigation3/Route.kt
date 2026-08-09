@@ -12,5 +12,8 @@ sealed interface Route : NavKey {
     data object ThemeSettings : Route
 
     @Serializable
+    data object About : Route
+
+    @Serializable
     data class AppConfig(val packageName: String) : Route
 }

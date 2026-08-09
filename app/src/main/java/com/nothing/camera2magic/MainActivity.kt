@@ -89,6 +89,7 @@ import com.nothing.camera2magic.ui.screen.log.LogScreen
 import com.nothing.camera2magic.ui.screen.scope.ScopeScreen
 import com.nothing.camera2magic.ui.screen.scope.AppConfigScreen
 import com.nothing.camera2magic.ui.component.liquid.IosLiquidGlassNavigationBar
+import com.nothing.camera2magic.ui.screen.settings.AboutScreen
 import com.nothing.camera2magic.ui.screen.settings.SettingsPage
 import com.nothing.camera2magic.ui.screen.settings.SettingsScreenContent
 import com.nothing.camera2magic.ui.screen.settings.ThemeSettingsScreen
@@ -284,6 +285,7 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                             onThemeConfigChanged = onThemeConfigChanged,
                             bottomPadding = bottomPadding,
                             onNavigateThemeSettings = { navigator.push(Route.ThemeSettings) },
+                            onNavigateAbout = { navigator.push(Route.About) },
                         )
                     }
                 }
@@ -342,6 +344,10 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                 onThemeConfigChanged = onThemeConfigChanged,
                 onBack = { navigator.pop() },
             )
+        }
+
+        entry<Route.About> {
+            AboutScreen(onBack = { navigator.pop() })
         }
 
         entry<Route.AppConfig> { key ->

@@ -101,4 +101,10 @@
     <string name="sort_by_name">Sort by Name</string>
     <string name="sort_by_package_name">Sort by Package Name</string>
     <string name="sort_reverse">Reverse</string>
+    <string name="settings_about">About</string>
+    <string name="about_title">About</string>
+    <string name="about_info">Info</string>
+    <string name="about_app_version">App Version</string>
+    <string name="about_build_version">Build Version</string>
+    <string name="about_project">Project</string>
 </resources>

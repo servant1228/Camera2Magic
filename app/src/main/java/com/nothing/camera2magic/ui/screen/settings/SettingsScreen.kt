@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nothing.camera2magic.BuildConfig
 import com.nothing.camera2magic.R
 import com.nothing.camera2magic.ui.component.AdaptiveTopAppBar
 import com.nothing.camera2magic.ui.component.BlurredBar
@@ -40,6 +41,7 @@ fun SettingsScreenContent(
     onThemeConfigChanged: (ThemeConfig) -> Unit = {},
     bottomPadding: Dp = 0.dp,
     onNavigateThemeSettings: () -> Unit = {},
+    onNavigateAbout: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = MiuixScrollBehavior()
@@ -129,6 +131,17 @@ fun SettingsScreenContent(
                         title = stringResource(R.string.settings_appearance_theme),
                         summary = stringResource(R.string.settings_appearance_theme_summary),
                         onClick = onNavigateThemeSettings,
+                    )
+                },
+            ))
+
+            item { SmallTitle(text = stringResource(R.string.settings_about)) }
+            groupedCardItems(keyPrefix = "about", items = listOf(
+                CardItem("about") {
+                    ArrowPreference(
+                        title = stringResource(R.string.settings_about),
+                        summary = "${stringResource(R.string.app_name)} v${BuildConfig.VERSION_NAME}",
+                        onClick = onNavigateAbout,
                     )
                 },
             ))

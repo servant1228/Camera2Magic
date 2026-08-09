@@ -102,4 +102,10 @@
     <string name="sort_by_name">按名称排序</string>
     <string name="sort_by_package_name">按包名排序</string>
     <string name="sort_reverse">反转</string>
+    <string name="settings_about">关于</string>
+    <string name="about_title">关于</string>
+    <string name="about_info">信息</string>
+    <string name="about_app_version">应用版本</string>
+    <string name="about_build_version">构建版本</string>
+    <string name="about_project">项目</string>
 </resources>
