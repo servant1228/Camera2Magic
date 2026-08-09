@@ -3,8 +3,7 @@ package com.nothing.camera2magic.ui.theme
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import com.nothing.camera2magic.viewmodel.ConfigRepository
-
-enum class ThemePaletteStyle { TonalSpot, Spritz, Vibrant, Expressive, FruitSalad, Rainbow, Monochrome }
+import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 
 enum class ThemeAccentColor(val seedColor: Color) {
     Default(Color(0xFF3482FF)),
@@ -66,14 +65,19 @@ fun ThemeConfig.resolveIsDark(systemDark: Boolean): Boolean = when (colorMode) {
 fun normalizeDensityScale(value: Float): Float =
     if (value.isFinite()) value.coerceIn(MinDensityScale, MaxDensityScale) else DefaultDensityScale
 
+fun themePaletteStyleFromStorage(value: String): ThemePaletteStyle = when (value) {
+    "Spritz" -> ThemePaletteStyle.Vibrant
+    else -> runCatching {
+        ThemePaletteStyle.valueOf(value)
+    }.getOrDefault(ThemePaletteStyle.TonalSpot)
+}
+
 fun readThemeConfig(repository: ConfigRepository): ThemeConfig {
     return ThemeConfig(
         colorMode = repository.themeDarkMode,
         pureBlack = repository.themePureBlack,
         useMonet = repository.themeMonet,
-        paletteStyle = runCatching {
-            ThemePaletteStyle.valueOf(repository.themePaletteStyle)
-        }.getOrDefault(ThemePaletteStyle.TonalSpot),
+        paletteStyle = themePaletteStyleFromStorage(repository.themePaletteStyle),
         accentColor = runCatching {
             ThemeAccentColor.entries.find { it.name == repository.themeAccentColor }
                 ?: ThemeAccentColor.Default

@@ -49,7 +49,7 @@ import com.nothing.camera2magic.ui.theme.MinDensityScale
 import com.nothing.camera2magic.ui.theme.MaxDensityScale
 import com.nothing.camera2magic.ui.theme.ThemeAccentColor
 import com.nothing.camera2magic.ui.theme.ThemeConfig
-import com.nothing.camera2magic.ui.theme.ThemePaletteStyle
+import com.nothing.camera2magic.ui.theme.label
 import com.nothing.camera2magic.ui.theme.normalizeDensityScale
 import com.nothing.camera2magic.viewmodel.SettingsViewModel
 import kotlin.math.roundToInt
@@ -72,6 +72,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowDialog
@@ -119,10 +120,10 @@ fun ThemeSettingsScreen(
         stringResource(R.string.settings_theme_dark),
     )
     val paletteStyles = ThemePaletteStyle.entries.toList()
-    val paletteItems = paletteStyles.map { it.name }
+    val paletteItems = paletteStyles.map { it.label() }
     val selectedPaletteIndex = paletteStyles.indexOf(themeConfig.paletteStyle).coerceAtLeast(0)
     val accentOptions = ThemeAccentColor.entries.toList()
-    val accentItems = accentOptions.map { it.name }
+    val accentItems = accentOptions.map { it.label() }
     val selectedAccentIndex = accentOptions.indexOf(themeConfig.accentColor).coerceAtLeast(0)
     val floatingBottomBarStyles = FloatingBottomBarStyle.entries.toList()
     val floatingBottomBarStyleItems = floatingBottomBarStyles.map {

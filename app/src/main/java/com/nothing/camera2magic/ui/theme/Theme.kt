@@ -16,12 +16,15 @@ import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeColorSpec
 import top.yukonga.miuix.kmp.theme.ThemeController
 import top.yukonga.miuix.kmp.theme.darkColorScheme as miuixDarkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme as miuixLightColorScheme
+import top.yukonga.miuix.kmp.theme.platformDynamicColors
 
 val LocalThemeConfig = compositionLocalOf { ThemeConfig() }
 val LocalAppDarkMode = staticCompositionLocalOf { false }
+val LocalAppMonetEnabled = staticCompositionLocalOf { false }
 
 @Composable
 fun Camera2MagicTheme(
@@ -31,10 +34,28 @@ fun Camera2MagicTheme(
     val systemDark = isSystemInDarkTheme()
     val darkTheme = themeConfig.resolveIsDark(systemDark)
 
-    val mode = if (darkTheme) ColorSchemeMode.Dark else ColorSchemeMode.Light
-
     val baseLight = remember { miuixLightColorScheme() }
     val baseDark = remember { miuixDarkColorScheme() }
+
+    val colorSchemeMode = when {
+        !themeConfig.useMonet && themeConfig.colorMode == 1 -> ColorSchemeMode.Light
+        !themeConfig.useMonet && themeConfig.colorMode == 2 -> ColorSchemeMode.Dark
+        !themeConfig.useMonet -> ColorSchemeMode.System
+        themeConfig.colorMode == 1 -> ColorSchemeMode.MonetLight
+        themeConfig.colorMode == 2 -> ColorSchemeMode.MonetDark
+        else -> ColorSchemeMode.MonetSystem
+    }
+
+    val systemSeedColor = if (themeConfig.useMonet && themeConfig.accentColor == ThemeAccentColor.Default) {
+        platformDynamicColors(darkTheme).primary
+    } else {
+        null
+    }
+    val keyColor = when {
+        !themeConfig.useMonet -> null
+        themeConfig.accentColor == ThemeAccentColor.Default -> systemSeedColor
+        else -> themeConfig.accentColor.seedColor
+    }
 
     val backgroundLight = if (themeConfig.useMonet) baseLight.background else Color(0xFFF5F5F5)
     val backgroundDark = if (themeConfig.pureBlack) Color(0xFF000000) else baseDark.background
@@ -43,8 +64,23 @@ fun Camera2MagicTheme(
     val customLight = remember(backgroundLight) { baseLight.copy(background = backgroundLight) }
     val customDark = remember(backgroundDark, surfaceDark) { baseDark.copy(background = backgroundDark, surface = surfaceDark) }
 
-    val controller = remember(darkTheme, customLight, customDark) {
-        ThemeController(mode, lightColors = customLight, darkColors = customDark)
+    val controller = remember(themeConfig, colorSchemeMode, keyColor, customLight, customDark) {
+        ThemeController(
+            colorSchemeMode = colorSchemeMode,
+            lightColors = customLight,
+            darkColors = customDark,
+            keyColor = keyColor,
+            colorSpec = ThemeColorSpec.Spec2025,
+            paletteStyle = themeConfig.paletteStyle,
+        )
+    }
+    val colors = controller.currentColors()
+    val themedColors = remember(colors, themeConfig.useMonet, themeConfig.pureBlack, darkTheme) {
+        if (themeConfig.useMonet && themeConfig.pureBlack && darkTheme) {
+            colors.copy(background = Color.Black, surface = Color.Black)
+        } else {
+            colors
+        }
     }
 
     val view = LocalView.current
@@ -57,9 +93,10 @@ fun Camera2MagicTheme(
         }
     }
 
-    MiuixTheme(controller = controller) {
+    MiuixTheme(colors = themedColors) {
         CompositionLocalProvider(
             LocalAppDarkMode provides darkTheme,
+            LocalAppMonetEnabled provides themeConfig.useMonet,
             LocalDensity provides Density(LocalDensity.current.density * themeConfig.densityScale, LocalDensity.current.fontScale),
         ) {
             content()
