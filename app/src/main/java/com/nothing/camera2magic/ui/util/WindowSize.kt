@@ -2,8 +2,15 @@ package com.nothing.camera2magic.ui.util
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -20,6 +27,11 @@ fun rememberIsWideScreen(): Boolean {
     val configuration = LocalConfiguration.current
     return remember(configuration) { configuration.screenWidthDp >= WideScreenMinWidth }
 }
+
+@Composable
+fun Modifier.horizontalCutoutPadding(): Modifier = windowInsetsPadding(
+    WindowInsets.displayCutout.union(WindowInsets.navigationBars).only(WindowInsetsSides.Horizontal),
+)
 
 @Composable
 fun WideContentBox(

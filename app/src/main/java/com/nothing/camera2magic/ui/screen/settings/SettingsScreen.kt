@@ -133,10 +133,6 @@ fun SettingsScreenContent(
                         onClick = onNavigateThemeSettings,
                     )
                 },
-            ))
-
-            item { SmallTitle(text = stringResource(R.string.settings_about)) }
-            groupedCardItems(keyPrefix = "about", items = listOf(
                 CardItem("about") {
                     ArrowPreference(
                         title = stringResource(R.string.settings_about),

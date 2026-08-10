@@ -125,10 +125,10 @@ flowchart LR
 
 | 文件 | 内容 | 含义 |
 | --- | --- | --- |
-| `module.prop` | `id=com.nothing.camera2magic`，min/targetApiVersion=102 | LSPosed 模块声明 |
+| `module.prop` | `id=com.nothing.camera2magic`，min/targetApiVersion=102，`staticScope=false` | LSPosed 模块声明（静态作用域关闭，作用域由模块内 UI 动态管理） |
 | `java_init.list` | `com.nothing.camera2magic.MagicHook` | Java 入口类 |
 | `native_init.list` | `camera3` | 原生初始化入口（`System.loadLibrary("camera3")`） |
-| `scope.list` | `tv.danmaku.bili` | 静态作用域： |
+| `scope.list` | 空（当前无推荐应用） | 仅在 LSPosed 中显示“推荐勾选”的应用；不参与 Hook 逻辑 |
 
 ## 5. 关键类速查表
 
@@ -238,24 +238,25 @@ flowchart LR
      [System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8)
      ```
    - 写文件务必保持 UTF-8，**不要另存为 GBK**，否则会造成中文乱码回归。
-2. 修改 Hook 类时保持现有模式：实现 `HookManager`，用
+2. **改动代码时不要新增注释**（不写解释性注释、TODO、标记性注释等）；已有注释保持原样。
+3. 修改 Hook 类时保持现有模式：实现 `HookManager`，用
    `param.classLoader.safeHook(类名) { ... }` 注册；动态回调类用
    `javaClass.safeHook { ... }` 去重后 Hook。
-3. 日志一律走 `com.nothing.camera2magic.utils.Dog`（i/w/e），tag 使用类内
+4. 日志一律走 `com.nothing.camera2magic.utils.Dog`（i/w/e），tag 使用类内
    常量（如 `[CAM2]`），`enabled` 参数传 `SM.enableLog`；**不要直接 Log.d/x**。
-4. 进程内共享对象用 `object` 单例；跨线程可见字段加 `@Volatile`；Hook 侧的
+5. 进程内共享对象用 `object` 单例；跨线程可见字段加 `@Volatile`；Hook 侧的
    对象引用用 `WeakReference` / `WeakHashMap` 防止内存泄漏（BlackHole、hookedClasses 都是）。
-5. Hook 拦截里任何可能抛异常的代码用 `runCatching` 包住，失败只记日志，不阻断原调用。
-6. 每个拦截器入口先判 `SM.readyForHook`（模块开关 + 应用开关），不满足直接 `chain.proceed()`。
-7. `NativeBridge` 是 JNI 契约的唯一来源：Java 声明与预编译 `libcamera3.so` 的导出
+6. Hook 拦截里任何可能抛异常的代码用 `runCatching` 包住，失败只记日志，不阻断原调用。
+7. 每个拦截器入口先判 `SM.readyForHook`（模块开关 + 应用开关），不满足直接 `chain.proceed()`。
+8. `NativeBridge` 是 JNI 契约的唯一来源：Java 声明与预编译 `libcamera3.so` 的导出
    保持同步，否则运行期 `UnsatisfiedLinkError`（`.so` 源码不入库，如需新增 native
    函数须在仓库外维护源码并重新编译）。
-8. UI 使用 Miuix 组件（`top.yukonga.miuix.kmp.*`），主题基于
+9. UI 使用 Miuix 组件（`top.yukonga.miuix.kmp.*`），主题基于
    `ThemeController` + `MiuixTheme`（由 `Camera2MagicTheme` 统一装载）；
    新增页面文案进 `res/values/strings.xml`（英文）+ `values-zh-rCN/strings.xml`（中文）。
-9. 导航：新增页面在 `Route` sealed 层级加 @Serializable 条目，`Navigator.push/pop`，
+10. 导航：新增页面在 `Route` sealed 层级加 @Serializable 条目，`Navigator.push/pop`，
    导航栈经 kotlinx.serialization JSON 持久化（`NavBackStackSaver`）。
-10. 不修改 `proguard-rules.pro` 中 native keep 规则、以及 `jniLibs/*/libcamera3.so`
+11. 不修改 `proguard-rules.pro` 中 native keep 规则、以及 `jniLibs/*/libcamera3.so`
     的 ABI 目录结构；release 签名密钥由 CI secrets / 本地 `keystore.properties`
     提供，密钥文件不入库。
 
@@ -269,8 +270,11 @@ flowchart LR
   `updateCameraBaseData` 的 sensorOri/displayOri 生效，改动旋转逻辑时不要只调
   `updateManualRotation`。
 - `NetworkHooker`（HttpURLConnection/OkHttp 网络上传替换）与 `WorkMode` 枚举已删除：前者不再需要，后者无任何使用点。
-- `MagicHook` 只在 `isFirstPackage` 时装配 Hook；scope 目前仅 `tv.danmaku.bili`，
-  新增作用域包后需同步修改 `scope.list` 与 `hook_enabled_packages` 逻辑。
+- `MagicHook` 只在 `isFirstPackage` 时装配 Hook；`scope.list` 仅在 LSPosed 中显示“推荐勾选”的应用，
+  当前为空，不需要往里面加应用；作用域实际由宿主“作用域”页经 `hook_enabled_packages` /
+  `app_hook_<pkg>` / 媒体配置动态生效。
+- 注意：Hook 侧 `readyForHook` 只判断 `moduleEnabled && appHookEnabled`（`app_hook_<pkg>` 默认 true）；
+  `hookEnabledPackages` 目前仅同步记录、未参与拦截门控，实际以是否配置媒体（`validMedia`）为准。
 - `ImageReaderHooker` 中 format=256 的替换依赖 `magic.openRemoteFile` 与
   `SM.validMedia`；替换失败时返回原图而非崩溃。
 - `BlackHole.clear()` 在 Camera 关闭/会话结束/WebRTC 停止时调用；新 Hook 路径
