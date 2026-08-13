@@ -110,7 +110,12 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                         } else {
                                             android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
                                         }
-                                        replBmp.recycle()
+                                        // 修复：当替换图与相机输出同尺寸时，createScaledBitmap 会直接返回原不可变位图，
+                                        // 此时 scaled 与 replBmp 是同一对象，不能重复 recycle，否则后续 compress 会抛
+                                        // "Can't compress a recycled bitmap"
+                                        if (scaled !== replBmp) {
+                                            replBmp.recycle()
+                                        }
                                         val bos = java.io.ByteArrayOutputStream()
                                         val cap = buffer.capacity()
                                         val target = minOf(originalJpeg.size, cap)
