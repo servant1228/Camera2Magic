@@ -13,12 +13,9 @@
     <string name="nav_scope">Scope</string>
     <string name="nav_settings">Settings</string>
     <string name="home_status_enabled">Module Enabled</string>
-    <string name="home_status_disabled">Module Disabled</string>
     <string name="home_status_inactive">Module Not Activated</string>
     <string name="home_status_inactive_hint">Enable the module in LSPosed first</string>
     <string name="home_hook_mode">Hook Mode</string>
-    <string name="home_activate_module">Activate Module</string>
-    <string name="home_deactivate_module">Deactivate Module</string>
     <string name="quick_entry_play_sound">Play Sound</string>
     <string name="quick_entry_enable_log">Enable Log</string>
     <string name="quick_entry_inject_menu">Inject Menu</string>
@@ -113,8 +110,9 @@
     <string name="app_config_select_photo">Select Photo</string>
     <string name="app_config_select_video">Select Video</string>
     <string name="app_config_no_media">Not selected</string>
-    <string name="app_config_launch_app">Launch App</string>
+    <string name="app_config_launch_app">Launch</string>
     <string name="app_config_force_stop">Force Stop</string>
+    <string name="app_config_restart">Restart</string>
     <string name="scope_show_system_apps">Show System Apps</string>
     <string name="sort_by_name">Sort by Name</string>
     <string name="sort_by_package_name">Sort by Package Name</string>

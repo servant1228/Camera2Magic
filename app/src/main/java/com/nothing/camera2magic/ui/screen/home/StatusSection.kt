@@ -27,8 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nothing.camera2magic.BuildConfig
 import com.nothing.camera2magic.R
 import com.nothing.camera2magic.ui.theme.RunState
 import com.nothing.camera2magic.ui.theme.StatusColors
@@ -61,8 +63,7 @@ private fun StatusContent(
     onHookModeSelected: (String) -> Unit,
     onNavigateScope: () -> Unit,
 ) {
-    val moduleEnabled = uiState.moduleEnabled
-    val status = moduleStatus(uiState.xposedActive, moduleEnabled)
+    val status = moduleStatus(uiState.xposedActive)
     val statusIcon = if (status == ModuleStatus.Enabled) {
         Icons.Rounded.CheckCircleOutline
     } else {
@@ -113,7 +114,6 @@ private fun StatusContent(
                     Text(
                         text = when (status) {
                             ModuleStatus.Enabled -> stringResource(R.string.home_status_enabled)
-                            ModuleStatus.Disabled -> stringResource(R.string.home_status_disabled)
                             ModuleStatus.Inactive -> stringResource(R.string.home_status_inactive)
                         },
                         fontSize = 20.sp,
@@ -122,7 +122,7 @@ private fun StatusContent(
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = uiState.versionName,
+                        text = "${uiState.versionName} (${BuildConfig.VERSION_CODE})",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
@@ -180,6 +180,19 @@ private fun StatusContent(
                 )
             }
         }
+    }
+
+    if (status == ModuleStatus.Inactive) {
+        Text(
+            text = stringResource(R.string.home_status_inactive_hint),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 12.dp),
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        )
     }
 
     HookModeDialog(

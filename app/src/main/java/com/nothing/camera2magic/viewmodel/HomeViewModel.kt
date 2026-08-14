@@ -77,18 +77,6 @@ class HomeViewModel(
         _uiState.update { it.copy(moduleEnabled = newState) }
     }
 
-    fun onModuleActivate() {
-        repository.moduleEnabled = true
-        _uiState.update { it.copy(moduleEnabled = true) }
-        Dog.i(TAG, "module activated", repository.enableLog)
-    }
-
-    fun onModuleDeactivate() {
-        repository.moduleEnabled = false
-        _uiState.update { it.copy(moduleEnabled = false) }
-        Dog.w(TAG, "module deactivated", repository.enableLog)
-    }
-
     fun onPlaySoundToggled() {
         val newState = !repository.playSound
         repository.playSound = newState

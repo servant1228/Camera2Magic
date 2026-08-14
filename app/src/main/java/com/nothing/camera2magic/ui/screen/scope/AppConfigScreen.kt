@@ -67,6 +67,7 @@ import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
 import com.nothing.camera2magic.utils.MediaPathResolver
 import com.nothing.camera2magic.viewmodel.ConfigRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
@@ -181,6 +182,17 @@ fun AppConfigScreen(
             Toast.makeText(context, "Force stopped", Toast.LENGTH_SHORT).show()
         }.onFailure { Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show() }
     }
+    val onRestartApp: () -> Unit = {
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "am force-stop $packageName"))
+        }.onFailure { Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show() }
+        scope.launch {
+            delay(500)
+            val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) context.startActivity(intent)
+            else Toast.makeText(context, "Cannot launch", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -188,6 +200,7 @@ fun AppConfigScreen(
                 onBack = onBack,
                 onLaunchApp = onLaunchApp,
                 onForceStopApp = onForceStopApp,
+                onRestartApp = onRestartApp,
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
                 barColor = barColor,
@@ -363,7 +376,7 @@ private fun AppConfigInner(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.app_config_select_photo), fontSize = textStyles.body2.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
+                        Text(stringResource(R.string.app_config_select_photo), fontSize = textStyles.main.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
                         Text(
                             photoDisplayPath ?: photoUri ?: stringResource(R.string.app_config_no_media),
                             fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
@@ -391,7 +404,7 @@ private fun AppConfigInner(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.app_config_select_video), fontSize = textStyles.body2.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
+                        Text(stringResource(R.string.app_config_select_video), fontSize = textStyles.main.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
                         Text(
                             videoDisplayPath ?: videoUri ?: stringResource(R.string.app_config_no_media),
                             fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
@@ -414,6 +427,7 @@ private fun TopBar(
     onBack: () -> Unit,
     onLaunchApp: () -> Unit,
     onForceStopApp: () -> Unit,
+    onRestartApp: () -> Unit,
     scrollBehavior: ScrollBehavior,
     backdrop: LayerBackdrop?,
     barColor: Color,
@@ -457,6 +471,7 @@ private fun TopBar(
                             val items = listOf(
                                 stringResource(R.string.app_config_launch_app),
                                 stringResource(R.string.app_config_force_stop),
+                                stringResource(R.string.app_config_restart),
                             )
                             items.forEachIndexed { index, text ->
                                 DropdownImpl(
@@ -468,6 +483,7 @@ private fun TopBar(
                                         when (index) {
                                             0 -> onLaunchApp()
                                             1 -> onForceStopApp()
+                                            2 -> onRestartApp()
                                         }
                                         showTopPopup.value = false
                                     },

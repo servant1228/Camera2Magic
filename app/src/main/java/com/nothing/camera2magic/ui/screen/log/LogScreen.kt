@@ -353,7 +353,8 @@ private fun LogDisabledSection(onEnable: () -> Unit) {
             Text(
                 text = stringResource(R.string.log_disabled_title),
                 modifier = Modifier.weight(1f),
-                fontSize = 14.sp,
+                fontSize = MiuixTheme.textStyles.main.fontSize,
+                fontWeight = FontWeight.Medium,
                 color = MiuixTheme.colorScheme.onSurface,
             )
             TextButton(

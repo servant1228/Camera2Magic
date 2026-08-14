@@ -39,6 +39,14 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 
 > 注意：媒体文件需要可被模块与目标应用访问；拍照替换仅对支持 JPEG/YUV 输出的相机路径生效。
 
+## 查看日志
+
+先开启「启用日志」，在应用「日志」页查看；查看目标应用（Hook 进程）的日志需要 root 权限，无 root 时仅能看到模块自身进程的日志。也可通过 logcat（tag 为 `VCX`）查看：
+
+```bash
+adb logcat -s VCX:*
+```
+
 ## 构建
 
 ### 常规构建

@@ -82,7 +82,6 @@ import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
 import com.nothing.camera2magic.ui.navigation3.LocalNavigator
 import com.nothing.camera2magic.ui.navigation3.Navigator
 import com.nothing.camera2magic.ui.navigation3.Route
-import com.nothing.camera2magic.ui.screen.home.ActionButtonsSection
 import com.nothing.camera2magic.ui.screen.home.DeviceInfoCard
 import com.nothing.camera2magic.ui.screen.home.statusSection
 import com.nothing.camera2magic.ui.screen.log.LogScreen
@@ -510,14 +509,6 @@ private fun HomePage(bottomPadding: Dp = 0.dp, onNavigateScope: () -> Unit = {})
                 onHookModeSelected = { homeViewModel.onHookModeChanged(it) },
                 onNavigateScope = onNavigateScope,
             )
-            item {
-                ActionButtonsSection(
-                    moduleEnabled = uiState.moduleEnabled,
-                    xposedActive = uiState.xposedActive,
-                    onActivate = { homeViewModel.onModuleActivate() },
-                    onDeactivate = { homeViewModel.onModuleDeactivate() },
-                )
-            }
             item { DeviceInfoCard() }
             item { Spacer(Modifier.height(24.dp)) }
         }

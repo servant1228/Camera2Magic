@@ -14,12 +14,9 @@
     <string name="nav_scope">作用域</string>
     <string name="nav_settings">设置</string>
     <string name="home_status_enabled">模块已启用</string>
-    <string name="home_status_disabled">模块已禁用</string>
     <string name="home_status_inactive">模块未激活</string>
     <string name="home_status_inactive_hint">请先在 LSPosed 中启用模块</string>
     <string name="home_hook_mode">Hook 模式</string>
-    <string name="home_activate_module">开启模块</string>
-    <string name="home_deactivate_module">关闭模块</string>
     <string name="quick_entry_play_sound">播放声音</string>
     <string name="quick_entry_enable_log">启用日志</string>
     <string name="quick_entry_inject_menu">注入菜单</string>
@@ -114,8 +111,9 @@
     <string name="app_config_select_photo">选择照片</string>
     <string name="app_config_select_video">选择视频</string>
     <string name="app_config_no_media">未选择</string>
-    <string name="app_config_launch_app">打开应用</string>
+    <string name="app_config_launch_app">启动</string>
     <string name="app_config_force_stop">强制停止</string>
+    <string name="app_config_restart">重新启动</string>
     <string name="scope_show_system_apps">显示系统应用</string>
     <string name="sort_by_name">按名称排序</string>
     <string name="sort_by_package_name">按包名排序</string>
