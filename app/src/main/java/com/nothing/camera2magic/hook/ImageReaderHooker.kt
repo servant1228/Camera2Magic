@@ -74,7 +74,7 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                         try {
                             // 缓存键包含文件大小与修改时间：媒体重新上传后不会命中旧缓存
                             val st = runCatching { android.system.Os.fstat(pfd.fileDescriptor) }.getOrNull()
-                            val cacheKey = "${validMedia.file}_${if (SM.fixPhotoRotation) 1 else 0}_${st?.st_size}_${st?.st_mtime}_${originalW}_${originalH}"
+                            val cacheKey = "${validMedia.file}_${st?.st_size}_${st?.st_mtime}_${originalW}_${originalH}"
                             jpeg = if (cacheKey == cachedJpegKey) cachedJpegBytes else null
                             if (jpeg != null) {
                                 Dog.i(TAG, "Using cached JPEG, size=${jpeg.size}", SM.enableLog)
@@ -83,33 +83,9 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                     java.io.FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
                                 }.getOrNull()
                                 if (replBytes != null && replBytes.isNotEmpty()) {
-                                    val camOrientation = if (SM.fixPhotoRotation) {
-                                        runCatching {
-                                            ExifInterface(java.io.ByteArrayInputStream(originalJpeg))
-                                                .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-                                        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-                                    } else ExifInterface.ORIENTATION_NORMAL
-                                    val replBmp = if (SM.fixPhotoRotation) {
-                                        decodeSampled(replBytes, 2048)
-                                    } else {
-                                        android.graphics.BitmapFactory.decodeByteArray(replBytes, 0, replBytes.size)
-                                    }
+                                    val replBmp = android.graphics.BitmapFactory.decodeByteArray(replBytes, 0, replBytes.size)
                                     if (replBmp != null) {
-                                        val bakeDegrees = orientationDegrees(camOrientation)
-                                        val scaled = if (SM.fixPhotoRotation) {
-                                            Dog.i(
-                                                TAG,
-                                                "photo fix: camOri=$camOrientation bake=$bakeDegrees src=${replBmp.width}x${replBmp.height} out=${originalW}x${originalH}",
-                                                true,
-                                            )
-                                            runCatching { bakeOrientation(replBmp, bakeDegrees, originalW, originalH) }
-                                                .getOrElse {
-                                                    Dog.e(TAG, "bake orientation failed: ${it.message}", it, true)
-                                                    android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
-                                                }
-                                        } else {
-                                            android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
-                                        }
+                                        val scaled = android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
                                         // 修复：当替换图与相机输出同尺寸时，createScaledBitmap 会直接返回原不可变位图，
                                         // 此时 scaled 与 replBmp 是同一对象，不能重复 recycle，否则后续 compress 会抛
                                         // "Can't compress a recycled bitmap"
@@ -174,9 +150,8 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                                     if (v != null) newExif.setAttribute(tag, v)
                                                 }
                                             }
-                                        // 保留原相机 EXIF Orientation（通常 6=顺时针90°）：
-                                        // 修正模式已把旋转烘焙进像素，方向最终正确；
-                                        // 且 App 的水印逻辑按竖拍方向处理，只画一次
+                                        // 保留原相机 EXIF Orientation（通常 6=顺时针90°），
+                                        // 查看器按 EXIF 旋转后即为正向画面
                                         runCatching {
                                             val v = origExif.getAttribute("Orientation")
                                             if (v != null) newExif.setAttribute("Orientation", v)
@@ -314,54 +289,5 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
 
         NB.overwriteYuvBuffer(yBuffer, yRowStride, yPixelStride,
             uBuffer, uRowStride, uPixelStride, vBuffer, vRowStride, vPixelStride)
-    }
-
-    /** 采样解码，限制最大边长，降低烘焙旋转时的峰值内存。 */
-    private fun decodeSampled(bytes: ByteArray, maxDim: Int): android.graphics.Bitmap? {
-        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        var sample = 1
-        while (bounds.outWidth / (sample * 2) >= maxDim || bounds.outHeight / (sample * 2) >= maxDim) {
-            sample *= 2
-        }
-        val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-        return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-    }
-
-    /** EXIF Orientation → 需要烘焙进像素的旋转角度（正值 = 顺时针）。 */
-    private fun orientationDegrees(orientation: Int): Float = when (orientation) {
-        ExifInterface.ORIENTATION_ROTATE_90 -> -90f   // 6：显示时顺时针 90°，烘焙时逆时针
-        ExifInterface.ORIENTATION_ROTATE_180 -> 180f  // 3
-        ExifInterface.ORIENTATION_ROTATE_270 -> 90f   // 8：显示时逆时针 90°，烘焙时顺时针
-        else -> 0f
-    }
-
-    /**
-     * 把给定旋转角度“烘焙”进像素并等比适配（contain，黑边）到目标尺寸。
-     * 例如目标角度 -90°：内容先逆时针转 90°，App/查看器再按相机 EXIF 转 90° 即恢复正向。
-     */
-    private fun bakeOrientation(
-        src: android.graphics.Bitmap,
-        degrees: Float,
-        targetW: Int,
-        targetH: Int,
-    ): android.graphics.Bitmap {
-        if (degrees == 0f) {
-            return android.graphics.Bitmap.createScaledBitmap(src, targetW, targetH, true)
-        }
-        val matrix = android.graphics.Matrix().apply { postRotate(degrees) }
-        val rotated = android.graphics.Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
-        // 等比适配（contain，黑边）
-        val scale = minOf(targetW.toFloat() / rotated.width, targetH.toFloat() / rotated.height)
-        val nw = (rotated.width * scale).toInt().coerceAtLeast(1)
-        val nh = (rotated.height * scale).toInt().coerceAtLeast(1)
-        val fitted = android.graphics.Bitmap.createScaledBitmap(rotated, nw, nh, true)
-        rotated.recycle()
-        val result = android.graphics.Bitmap.createBitmap(targetW, targetH, android.graphics.Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(result)
-        canvas.drawColor(android.graphics.Color.BLACK)
-        canvas.drawBitmap(fitted, (targetW - nw) / 2f, (targetH - nh) / 2f, null)
-        fitted.recycle()
-        return result
     }
 }

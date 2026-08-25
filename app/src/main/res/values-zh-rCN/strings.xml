@@ -84,8 +84,6 @@
     <string name="quick_entry_enable_log_summary">启用日志用于调试</string>
     <string name="quick_entry_inject_menu_summary">向目标应用注入菜单</string>
     <string name="quick_entry_manually_rotate_summary">覆盖相机旋转画面</string>
-    <string name="quick_entry_fix_photo_rotation">照片旋转修正</string>
-    <string name="quick_entry_fix_photo_rotation_summary">将旋转烘焙进照片并保留相机EXIF方向，避免部分应用强制旋转</string>
     <string name="common_back">返回</string>
     <string name="scope_select_all">全选</string>
     <string name="scope_deselect_all">取消全选</string>

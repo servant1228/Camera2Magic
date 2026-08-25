@@ -110,14 +110,6 @@ fun SettingsScreenContent(
                         onCheckedChange = { viewModel.onShowToastChanged(it) },
                     )
                 },
-                CardItem("fixPhotoRotation") {
-                    SwitchPreference(
-                        title = stringResource(R.string.quick_entry_fix_photo_rotation),
-                        summary = stringResource(R.string.quick_entry_fix_photo_rotation_summary),
-                        checked = uiState.fixPhotoRotation,
-                        onCheckedChange = { viewModel.onFixPhotoRotationChanged(it) },
-                    )
-                },
                 CardItem("enableLog") {
                     SwitchPreference(
                         title = stringResource(R.string.quick_entry_enable_log),

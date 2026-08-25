@@ -113,11 +113,10 @@ flowchart LR
    绘制静态图）到 OES 纹理 → `SurfaceTexture` → 原生引擎注入到目标 Surface；
    `main_manually_rotate` 变化时通过改写 `updateCameraBaseData` 的
    sensorOri/displayOri 实时生效；
-4. `ImageReaderHooker`：`format=256`(JPEG) 拍照时用所选图片按原始尺寸缩放替换
-   （保留 EXIF，按字节数二分搜索压缩质量，JPEG 结果按媒体+开关缓存）；
-   `format=35`(YUV) 走 `overwriteYuvBuffer` 原生覆盖；`main_fix_photo_rotation`
-   开启时忽略相机 EXIF、按媒体自身方向烘焙旋转；Camera1 拍照路径同样支持
-   （关闭时走原生 `overwriteJPEGBytes`）；
+ 4. `ImageReaderHooker`：`format=256`(JPEG) 拍照时用所选图片按原始尺寸缩放替换
+    （保留 EXIF，按字节数二分搜索压缩质量，JPEG 结果按媒体+文件信息缓存）；
+    `format=35`(YUV) 走 `overwriteYuvBuffer` 原生覆盖；Camera1 拍照路径走原生
+    `overwriteJPEGBytes`；
 5. `WebRTCHooker`：解析 `org.webrtc.Logging.nativeLog` 中的 rotation 消息同步旋转，
    会话停止时释放 Camera3 与渲染目标。
 
@@ -136,7 +135,7 @@ flowchart LR
 | --- | --- | --- |
 | `MagicHook` | Xposed 入口 | 加载 .so、初始化 SourceManager、装配 4 个 Hooker（Camera1/Camera2/ImageReader/WebRTC）、前台 Toast |
 | `GlobalState` | 进程内全局态 | `appContext`、`processName`、`activityCount`（@Volatile） |
-| `SourceManager` | 配置解析中心 | 所有开关与媒体键的单一读取点；`readyForHook = moduleEnabled && appHookEnabled`；监听 `main_manually_rotate` / `main_fix_photo_rotation` 变化并实时重发原生 |
+| `SourceManager` | 配置解析中心 | 所有开关与媒体键的单一读取点；`readyForHook = moduleEnabled && appHookEnabled`；监听 `main_manually_rotate` 变化并实时重发原生 |
 | `ConfigRepository` | 宿主侧配置读写 | 每个 setter 同时写本地 + 远程；按包配置、媒体上传、scope 查询 |
 | `HookManager` | Hook 基础设施 | `safeHook` 去重（WeakHashMap 集合）+ `runCatching` 容错 |
 | `Camera1Hooker` | 老版 Camera API | open/setPreview*/startPreview/stop/release/回调/拍照 |
@@ -163,7 +162,6 @@ flowchart LR
 | `main_module_enabled` | Boolean=true | 模块总开关 |
 | `main_play_sound` / `main_enable_log` / `main_show_toast` | Boolean=false/false/true | 播放声音 / 日志 / Toast |
 | `main_inject_menu` | Boolean=false | 向目标相机应用注入菜单（当前仅宿主 UI 开关，Hook 侧尚未实现） |
-| `main_fix_photo_rotation` | Boolean=false | 拍照旋转修正：忽略相机 EXIF，按媒体自身方向烘焙 |
 | `main_manually_rotate` | Int=0 | 手动旋转（0/90/180/270 索引） |
 | `hook_enabled_packages` | String(逗号分隔) | 启用 Hook 的包集合 |
 | `app_hook_<pkg>` | Boolean=true | 单应用 Hook 开关 |
@@ -265,7 +263,7 @@ flowchart LR
 - 全局媒体机制与 RTSP 已移除：媒体只能按应用在 AppConfig 中选择（照片/视频），
   未配置媒体时 `validMedia = null`，Hook 不会注入画面。
 - `main_inject_menu`（注入菜单）目前只是宿主 UI 上的开关，Hook 侧没有对应实现；不要把它当作已生效的功能。
-- `NativeBridge.updateManualRotation` 在预编译 `libcamera3.so` 中没有实际读取点；
+- `libcamera3.so` 已换回原项目 Atomos-X/Camera2Magic v1.1.2-fix 的预编译产物；
   手动旋转通过 `SourceManager.applyManualRotationToNative()` 改写
   `updateCameraBaseData` 的 sensorOri/displayOri 生效，改动旋转逻辑时不要只调
   `updateManualRotation`。

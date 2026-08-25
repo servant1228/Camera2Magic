@@ -30,9 +30,6 @@ object SourceManager {
     var showToast: Boolean = true
         private set
     @Volatile
-    var fixPhotoRotation: Boolean = false
-        private set
-    @Volatile
     var manuallyRotate: Int = 0
         private set
     // 最近一次 Hook 侧下发的相机 base data，用于实时叠加手动旋转后重新下发
@@ -81,10 +78,6 @@ object SourceManager {
                     refreshPrefs()
                     applyManualRotationToNative()
                 }
-                // 照片方向修正变化时刷新配置，下一次拍照即生效
-                if (key == "main_fix_photo_rotation") {
-                    refreshPrefs()
-                }
             }.onFailure { e ->
                 Dog.e(TAG, "apply manual rotation failed: ${e.message}", e, enableLog)
             }
@@ -94,9 +87,8 @@ object SourceManager {
 
     /**
      * 记录 Hook 侧最近一次相机 base data。
-     * 预编译 libcamera3.so 中 updateManualRotation 存储的字段没有任何读取点（死字段），
-     * 原生实际消费的旋转输入是 sensorOri（Camera2 预览角度 + YUV 旋转）与
-     * displayOri（仅 Camera1 的宽高交换），因此手动旋转通过改写这两个值生效。
+     * 手动旋转通过改写 updateCameraBaseData 的 sensorOri（预览角度 + YUV 旋转）与
+     * displayOri（仅 Camera1 的宽高交换）实时生效。
      */
     fun rememberCameraBaseData(
         api: Int,
@@ -152,7 +144,6 @@ object SourceManager {
             playSound = prefs.getBoolean(KEY_PLAY_SOUND, false)
             enableLog = prefs.getBoolean(KEY_ENABLE_LOG, false)
             showToast = prefs.getBoolean(KEY_SHOW_TOAST, true)
-            fixPhotoRotation = prefs.getBoolean("main_fix_photo_rotation", false)
             manuallyRotate = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
             Dog.w(TAG, "refreshPrefs: manuallyRotate=$manuallyRotate", true)
 

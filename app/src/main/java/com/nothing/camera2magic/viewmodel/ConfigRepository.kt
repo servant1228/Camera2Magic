@@ -150,11 +150,6 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         get() = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
         set(value) = save("main_manually_rotate", value)
 
-    /** 拍照时忽略原相机 EXIF 方向，让照片保持媒体自身方向 */
-    var fixPhotoRotation: Boolean
-        get() = prefs.getBoolean("main_fix_photo_rotation", false)
-        set(value) = save("main_fix_photo_rotation", value)
-
     var hookMode: String
         get() = prefs.getString("main_hook_mode", "Camera2") ?: "Camera2"
         set(value) = save("main_hook_mode", value)

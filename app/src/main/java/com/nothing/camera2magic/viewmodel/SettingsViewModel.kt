@@ -18,7 +18,6 @@ data class SettingsUiState(
     val showToast: Boolean = true,
     val injectMenu: Boolean = false,
     val manuallyRotate: Int = 0,
-    val fixPhotoRotation: Boolean = false,
     val themeConfig: ThemeConfig = ThemeConfig(),
 )
 
@@ -41,7 +40,6 @@ class SettingsViewModel(
             showToast = repository.showToast,
             injectMenu = repository.injectMenu,
             manuallyRotate = repository.manuallyRotate,
-            fixPhotoRotation = repository.fixPhotoRotation,
             themeConfig = readThemeConfig(repository),
         )
     }
@@ -75,10 +73,5 @@ class SettingsViewModel(
     fun onManuallyRotateChanged(value: Int) {
         repository.manuallyRotate = value
         _uiState.update { it.copy(manuallyRotate = value) }
-    }
-
-    fun onFixPhotoRotationChanged(value: Boolean) {
-        repository.fixPhotoRotation = value
-        _uiState.update { it.copy(fixPhotoRotation = value) }
     }
 }

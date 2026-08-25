@@ -52,23 +52,6 @@ class Camera3 {
         private var oesTextureId: Int = 0
         private var surface: Surface? = null
         private var surfaceTexture: SurfaceTexture? = null
-        @Volatile
-        private var lastFrameW = 0
-        @Volatile
-        private var lastFrameH = 0
-        @Volatile
-        private var lastNaturalW = 0
-        @Volatile
-        private var lastNaturalH = 0
-        @Volatile
-        private var lastRotation = 0
-
-        /** 拍照时按需切换原生帧信息：预览用适配值，JPEG 生成用自然值。 */
-        fun applyFrameInfoToNative(useNatural: Boolean) {
-            val w = if (useNatural) lastNaturalW else lastFrameW
-            val h = if (useNatural) lastNaturalH else lastFrameH
-            if (w > 0 && h > 0) NB.updateFrameInfo(w, h, lastRotation)
-        }
     }
 
     enum class State { IDLE, BUFFERING, READY, ENDED, PLAYING, PAUSE, ERROR }
@@ -81,11 +64,6 @@ class Camera3 {
             val width = (videoSize.width * pixelRatio).toInt()
             val height = videoSize.height
             val rotation = videoSize.unappliedRotationDegrees
-            lastNaturalW = width
-            lastNaturalH = height
-            lastRotation = rotation
-            lastFrameW = width
-            lastFrameH = height
             NB.updateFrameInfo(width, height, rotation)
             SM.applyManualRotationToNative()
             surfaceTexture?.setDefaultBufferSize(width, height)
@@ -191,11 +169,6 @@ class Camera3 {
             val bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
                 ?: throw IllegalStateException("decode image failed.")
 
-            lastNaturalW = bitmap.width
-            lastNaturalH = bitmap.height
-            lastRotation = 0
-            lastFrameW = bitmap.width
-            lastFrameH = bitmap.height
             NB.updateFrameInfo(bitmap.width, bitmap.height, 0)
             SM.applyManualRotationToNative()
             surfaceTexture?.setDefaultBufferSize(bitmap.width, bitmap.height)
