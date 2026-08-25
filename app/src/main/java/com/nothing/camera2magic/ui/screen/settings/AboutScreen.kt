@@ -369,6 +369,11 @@ private fun AboutContent(
                                 onClick = { onOpenUrl("https://github.com/compose-miuix-ui/miuix") },
                             )
                             ArrowPreference(
+                                title = "AndroidLiquidGlass",
+                                summary = "github.com/Kyant0/AndroidLiquidGlass",
+                                onClick = { onOpenUrl("https://github.com/Kyant0/AndroidLiquidGlass") },
+                            )
+                            ArrowPreference(
                                 title = "media3",
                                 summary = "github.com/androidx/media",
                                 onClick = { onOpenUrl("https://github.com/androidx/media") },

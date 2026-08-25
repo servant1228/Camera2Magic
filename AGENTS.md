@@ -57,14 +57,14 @@ Camera2Magic/
 │       │   │   ├── MagicDataSource.kt / MagicMedia.kt / SourceManager.kt
 │       │   │   └── HookManager.kt  # safeHook 工具接口
 │       │   ├── ui/                  # Compose UI（screen/component/navigation3/theme/util）
-│       │   ├── utils/Dog.kt         # 日志单例（StateFlow + logcat 桥接监听）
+│       │   ├── utils/Dog.kt         # 日志单例（纯 logcat 写入器，tag=VCX，查看走 adb logcat）
 │       │   ├── utils/MediaPathResolver.kt  # content:// 媒体解析为可展示路径
-│       │   └── viewmodel/           # ConfigRepository + 3 个 ViewModel + Factory + CompositionLocals
+│       │   └── viewmodel/           # ConfigRepository + 2 个 ViewModel + Factory + CompositionLocals
 │       ├── res/values{, -zh-rCN}/strings.xml  # 英文 + 中文文案
 │       ├── res/xml/file_paths.xml   # FileProvider 导出路径
 │       ├── jniLibs/{arm64-v8a}/libcamera3.so   # 预编译原生库（闭源，源码不入库）
 │       └── resources/META-INF/xposed/  # module.prop / java_init.list / native_init.list / scope.list
-├── app/src/test/                   # 单元测试（LogcatParserTest 等）
+├── app/src/test/                   # 单元测试（ModuleStatusTest 等）
 ├── build.gradle / settings.gradle / gradle.properties / gradle/libs.versions.toml
 └── local.properties                # 本机 SDK 路径，不入库
 ```
@@ -147,7 +147,7 @@ flowchart LR
 | `NativeBridge` | JNI 桥 | 全部 `external fun` 的声明（见下） |
 | `BlackHole` | 假 Surface 池 | `WeakHashMap<Surface, BH>`，替换真实预览面；`clear()` 统一释放 |
 | `MediaPathResolver` | 宿主侧路径展示 | 把 content:// 媒体解析为可展示的真实路径（MediaStore DATA / RELATIVE_PATH） |
-| `Dog` | 日志 | 全局 TAG `VCX`；宿主进程内存缓冲 + logcat 桥接（root 时走 su），`StateFlow<List<LogEntry>>` 上限 1000 条；logcat 行解析为纯 JVM 函数并带单元测试 |
+| `Dog` | 日志 | 全局 TAG `VCX`；纯 logcat 写入器（i/w/e），无内存缓冲；查看统一走 `adb logcat -s VCX:*` |
 
 `NativeBridge` 的 JNI 函数清单：`createOESTexture`、`notifyFrameAvailable`、
 `setSurfaceTexture`、`getSurfaceInfo`、`updateCameraBaseData`、`updateManualRotation`、
@@ -292,5 +292,5 @@ flowchart LR
 - [ ] 改动原生：在本机 `app/src/main/cpp/` 维护源码（不入库），`gradlew buildNative`
       后更新 `jniLibs` 产物、检查 proguard keep；公开仓库只发布预编译 `.so`。
 - [ ] 构建验证：统一用debug验证；改动签名/版本/ABI 时核对 `app/build.gradle` 常量（release 签名走 CI secrets / 本地 `keystore.properties`）。
-- [ ] 改动 `Dog` / logcat 解析等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
+- [ ] 改动 `Dog` 等纯 JVM 逻辑时跑 `.\gradlew.bat testDebugUnitTest` 验证。
 - [ ] 编码检查：所有改动文件保持 UTF-8，中文注释在 UTF-8 读取下无乱码。

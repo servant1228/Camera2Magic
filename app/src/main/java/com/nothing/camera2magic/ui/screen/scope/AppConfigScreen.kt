@@ -57,7 +57,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.nothing.camera2magic.R
 import com.nothing.camera2magic.ui.component.BlurredBar
@@ -316,14 +315,14 @@ private fun AppConfigInner(
                     Text(
                         text = appLabel,
                         color = colorScheme.onSurface,
-                        fontWeight = FontWeight(550),
+                        fontSize = textStyles.main.fontSize,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                     )
                     Text(
                         text = packageName,
-                        fontSize = 12.sp,
+                        fontSize = textStyles.body2.fontSize,
                         color = colorScheme.onSurfaceVariantSummary,
-                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                     )
                 }

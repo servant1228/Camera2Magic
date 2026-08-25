@@ -17,9 +17,6 @@ class ViewModelFactory(
             modelClass.isAssignableFrom(HomeViewModel::class.java) -> {
                 HomeViewModel(app, repository) as T
             }
-            modelClass.isAssignableFrom(LogViewModel::class.java) -> {
-                LogViewModel() as T
-            }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

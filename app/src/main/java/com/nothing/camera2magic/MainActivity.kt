@@ -84,7 +84,6 @@ import com.nothing.camera2magic.ui.navigation3.Navigator
 import com.nothing.camera2magic.ui.navigation3.Route
 import com.nothing.camera2magic.ui.screen.home.DeviceInfoCard
 import com.nothing.camera2magic.ui.screen.home.statusSection
-import com.nothing.camera2magic.ui.screen.log.LogScreen
 import com.nothing.camera2magic.ui.screen.scope.ScopeScreen
 import com.nothing.camera2magic.ui.screen.scope.AppConfigScreen
 import com.nothing.camera2magic.ui.component.liquid.IosLiquidGlassNavigationBar
@@ -105,7 +104,6 @@ import com.nothing.camera2magic.viewmodel.ConfigRepository
 import com.nothing.camera2magic.viewmodel.HomeViewModel
 import com.nothing.camera2magic.viewmodel.LocalConfigRepository
 import com.nothing.camera2magic.viewmodel.LocalViewModelFactory
-import com.nothing.camera2magic.viewmodel.LogViewModel
 import com.nothing.camera2magic.viewmodel.SettingsViewModel
 import com.nothing.camera2magic.viewmodel.ViewModelFactory
 import kotlinx.coroutines.CoroutineScope
@@ -222,7 +220,7 @@ private fun MainScreenBackHandler(
 private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (ThemeConfig) -> Unit) {
     val backStack = rememberSaveable(saver = NavBackStackSaver) { mutableStateListOf<NavKey>(Route.Main) }
     val navigator = remember { Navigator(backStack) }
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val pagerState = rememberPagerState(pageCount = { 3 })
     val mainPagerState = rememberMainPagerState(pagerState)
     val selectedPage = mainPagerState.selectedPage
 
@@ -259,7 +257,6 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
 
     val navigationItems = listOf(
         NavigationItem(label = stringResource(R.string.nav_home), icon = MiuixIcons.Home),
-        NavigationItem(label = stringResource(R.string.nav_log), icon = MiuixIcons.File),
         NavigationItem(label = stringResource(R.string.nav_scope), icon = MiuixIcons.GridView),
         NavigationItem(label = stringResource(R.string.nav_settings), icon = MiuixIcons.Settings),
     )
@@ -276,10 +273,9 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                     verticalAlignment = Alignment.Top,
                 ) { page ->
                     when (page) {
-                        0 -> HomePage(bottomPadding = bottomPadding, onNavigateScope = { mainPagerState.animateToPage(2) })
-                        1 -> LogPage(bottomPadding = bottomPadding)
-                        2 -> ScopePage(bottomPadding = bottomPadding)
-                        3 -> SettingsScreenContent(
+                        0 -> HomePage(bottomPadding = bottomPadding, onNavigateScope = { mainPagerState.animateToPage(1) })
+                        1 -> ScopePage(bottomPadding = bottomPadding)
+                        2 -> SettingsScreenContent(
                             viewModel = settingsViewModel,
                             onThemeConfigChanged = onThemeConfigChanged,
                             bottomPadding = bottomPadding,
@@ -513,24 +509,6 @@ private fun HomePage(bottomPadding: Dp = 0.dp, onNavigateScope: () -> Unit = {})
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
-}
-
-@Composable
-private fun LogPage(bottomPadding: Dp = 0.dp) {
-    val factory = LocalViewModelFactory.current
-    val homeViewModel: HomeViewModel = viewModel(factory = factory)
-    val logViewModel: LogViewModel = viewModel(factory = factory)
-    val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
-    val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-    LogScreen(
-        viewModel = logViewModel,
-        bottomPadding = bottomPadding,
-        enableLog = settingsUiState.enableLog,
-        onEnableLog = {
-            homeViewModel.onEnableLogToggled()
-            settingsViewModel.onEnableLogChanged(!settingsUiState.enableLog)
-        },
-    )
 }
 
 @Composable

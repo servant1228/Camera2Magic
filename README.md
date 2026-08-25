@@ -41,11 +41,13 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 
 ## 查看日志
 
-先开启「启用日志」，在应用「日志」页查看；查看目标应用（Hook 进程）的日志需要 root 权限，无 root 时仅能看到模块自身进程的日志。也可通过 logcat（tag 为 `VCX`）查看：
+先开启「启用日志」，然后通过 logcat 查看（tag 为 `VCX`）：
 
 ```bash
 adb logcat -s VCX:*
 ```
+
+> 应用内不再提供日志页；查看目标应用（Hook 进程）的日志同样通过 adb 完成。
 
 ## 构建
 

@@ -189,7 +189,7 @@ fun ScopeScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = stringResource(R.string.log_empty),
+                                    text = stringResource(R.string.common_no_matching_apps),
                                     fontSize = 16.sp,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 )
@@ -295,13 +295,13 @@ private fun ScopeAppCard(app: ScopeApp, onClick: () -> Unit) {
                 Text(
                     text = app.label,
                     color = MiuixTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight(550),
+                    fontSize = MiuixTheme.textStyles.main.fontSize,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
                 Text(
                     text = app.packageName,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     maxLines = 1,
                 )

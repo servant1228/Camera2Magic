@@ -9,7 +9,6 @@
     <string name="home_device_system">System</string>
     <string name="home_device_architecture">Architecture</string>
     <string name="nav_home">Home</string>
-    <string name="nav_log">Log</string>
     <string name="nav_scope">Scope</string>
     <string name="nav_settings">Settings</string>
     <string name="home_status_enabled">Module Enabled</string>
@@ -90,16 +89,9 @@
     <string name="common_cancel">Cancel</string>
     <string name="common_confirm">Confirm</string>
     <string name="common_not_modified">Do not modify</string>
-    <string name="common_clear">Clear</string>
-    <string name="common_copied_to_clipboard">Copied to clipboard</string>
-    <string name="log_title">Log</string>
-    <string name="log_empty">No logs yet</string>
+    <string name="common_no_matching_apps">No matching apps</string>
     <string name="quick_entry_show_toast">Show Toast</string>
     <string name="quick_entry_show_toast_summary">Show a toast notification when the target app opens</string>
-    <string name="log_disabled_title">Logging is disabled. Enable it to view logs.</string>
-    <string name="log_enable_action">Enable</string>
-    <string name="log_share">Share</string>
-    <string name="log_share_failed">Failed to share logs</string>
     <string name="app_config_title">App Config</string>
     <string name="app_config_enable_hook">Enable Hook</string>
     <string name="app_config_profile">Config</string>
