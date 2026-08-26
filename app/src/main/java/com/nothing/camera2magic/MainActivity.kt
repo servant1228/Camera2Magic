@@ -19,9 +19,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -95,6 +93,7 @@ import com.nothing.camera2magic.ui.util.rememberIsWideScreen
 import com.nothing.camera2magic.ui.theme.BottomBarMode
 import com.nothing.camera2magic.ui.theme.Camera2MagicTheme
 import com.nothing.camera2magic.ui.theme.FloatingBottomBarStyle
+import com.nothing.camera2magic.ui.theme.LocalAppDarkMode
 import com.nothing.camera2magic.ui.theme.LocalThemeConfig
 import com.nothing.camera2magic.ui.theme.ThemeConfig
 import com.nothing.camera2magic.ui.theme.readThemeConfig
@@ -296,7 +295,7 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                                 onItemClick = { index -> mainPagerState.animateToPage(index) },
                                 backdrop = bottomBarBackdrop,
                                 isBlurActive = bottomBarBlurActive,
-                                isDark = isSystemInDarkTheme(),
+                                isDark = LocalAppDarkMode.current,
                                 showLabels = showLabels,
                             )
                         } else {

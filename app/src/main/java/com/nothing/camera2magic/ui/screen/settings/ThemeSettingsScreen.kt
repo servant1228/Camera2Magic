@@ -73,6 +73,7 @@ import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
+import com.nothing.camera2magic.ui.util.horizontalCutoutPadding
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowDialog
@@ -164,6 +165,7 @@ fun ThemeSettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .horizontalCutoutPadding()
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .scrollEndHaptic()
                 .overScrollVertical()

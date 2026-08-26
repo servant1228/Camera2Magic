@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -63,8 +63,6 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -176,19 +174,8 @@ private fun AboutContent(
         else ColorBlendToken.Pured_Regular_Light
     }
     val logoBlend = remember(isDark) {
-        if (isDark) {
-            listOf(
-                BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge),
-                BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight),
-                BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab),
-            )
-        } else {
-            listOf(
-                BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn),
-                BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight),
-                BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab),
-            )
-        }
+        if (isDark) ColorBlendToken.Logo_Dark
+        else ColorBlendToken.Logo_Light
     }
 
     var logoHeightDp by remember { mutableStateOf(300.dp) }
@@ -385,7 +372,7 @@ private fun AboutContent(
                             )
                         }
 
-                        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+                        Spacer(Modifier.height(24.dp).navigationBarsPadding())
                     }
                 }
             }
