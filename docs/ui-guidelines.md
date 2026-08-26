@@ -10,6 +10,8 @@ Compose / Miuix 相关的全部约定与踩坑约束。改 `app/src/main/java/co
   - 图片 / 必须裁剪内容 → `squircleClip`（一个 offscreen layer）；
   - 可点击 → `squircleSurface` + `.clickable{}`（涟漪裁进圆角）；条件可点击时退化为 `squircleBackground`。
 - 现存少数 `RoundedCornerShape` 用点（AboutScreen 的 `textureBlur(shape = ...)`）是**参数豁免**：那是 Miuix blur API 的 Shape 入参、非手搓 clip/background；待 miuix-blur 暴露 squircle Shape 后再迁移，新增 clip/background 零容忍。
+- **卡片圆角同心跟随系统屏幕圆角**：一律用 [rememberConcentricCardRadius](../app/src/main/java/com/nothing/camera2magic/ui/component/ConcentricRadius.kt)（= 屏幕半径 − 12.dp 边距，下限回落 `CardDefaults.CornerRadius`；直屏自动回 16dp）。miuix `Card` 传 `cornerRadius = rememberConcentricCardRadius()`，AboutScreen 毛玻璃卡的 `textureBlur(shape = ...)` 也传同一值保持裁剪一致；`CardSegment` 默认已接入（显式传参可覆盖）。新增卡片禁止写死 `16.dp` 圆角。
+- **弹出菜单圆角**：库内 `ListPopupContent` 写死 16dp 且未透出参数。裸用 `OverlayListPopup` 时以 `popupModifier = Modifier.squircleClip(rememberConcentricCardRadius())` 外层裁剪补齐（AppConfigScreen 的应用菜单即是）；miuix 的 `OverlayDropdownPreference` / `OverlaySpinnerPreference` 无注入点，暂保持库默认 16dp——**不要本地复刻偏好组件**，等上游透出圆角参数后统一替换。底部弹层类 Dialog（含 dropdown dialog）库内已按「屏幕圆角 − 边距」推导（钳 32–48dp），无需处理。
 
 ## 页面骨架
 
