@@ -14,14 +14,9 @@ import kotlinx.coroutines.launch
 
 @Immutable
 data class HomeUiState(
-    val moduleEnabled: Boolean = true,
     val xposedActive: Boolean = false,
     val hookMode: String = "Camera2",
     val versionName: String = BuildConfig.VERSION_NAME,
-    val playSound: Boolean = false,
-    val enableLog: Boolean = false,
-    val injectMenu: Boolean = false,
-    val manuallyRotate: Int = 0,
     val scopeAppList: List<String> = emptyList(),
     val isRefreshing: Boolean = false,
 )
@@ -60,39 +55,10 @@ class HomeViewModel(
     private fun loadInitialState() {
         _uiState.update {
             it.copy(
-                moduleEnabled = repository.moduleEnabled,
                 xposedActive = repository.xposedActive.value,
-                playSound = repository.playSound,
-                enableLog = repository.enableLog,
-                injectMenu = repository.injectMenu,
-                manuallyRotate = repository.manuallyRotate,
                 scopeAppList = repository.getScopeAppList() ?: emptyList(),
             )
         }
-    }
-
-    fun onModuleToggle() {
-        val newState = !repository.moduleEnabled
-        repository.moduleEnabled = newState
-        _uiState.update { it.copy(moduleEnabled = newState) }
-    }
-
-    fun onPlaySoundToggled() {
-        val newState = !repository.playSound
-        repository.playSound = newState
-        _uiState.update { it.copy(playSound = newState) }
-    }
-
-    fun onEnableLogToggled() {
-        val newState = !repository.enableLog
-        repository.enableLog = newState
-        Dog.enabled = newState
-        _uiState.update { it.copy(enableLog = newState) }
-        Dog.i(TAG, "logging ${if (newState) "enabled" else "disabled"}", true)
-    }
-
-    fun onScopeChanged(packages: List<String>) {
-        repository.hookEnabledPackages = packages
     }
 
     fun refreshScopeList() {
@@ -106,12 +72,6 @@ class HomeViewModel(
                 )
             }
         }
-    }
-
-    fun onInjectMenuToggled() {
-        val newState = !repository.injectMenu
-        repository.injectMenu = newState
-        _uiState.update { it.copy(injectMenu = newState) }
     }
 
     fun onHookModeChanged(mode: String) {

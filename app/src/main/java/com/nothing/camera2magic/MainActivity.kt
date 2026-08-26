@@ -89,7 +89,6 @@ import com.nothing.camera2magic.ui.screen.settings.AboutScreen
 import com.nothing.camera2magic.ui.screen.settings.SettingsPage
 import com.nothing.camera2magic.ui.screen.settings.SettingsScreenContent
 import com.nothing.camera2magic.ui.screen.settings.ThemeSettingsScreen
-import com.nothing.camera2magic.ui.util.rememberIsWideScreen
 import com.nothing.camera2magic.ui.theme.BottomBarMode
 import com.nothing.camera2magic.ui.theme.Camera2MagicTheme
 import com.nothing.camera2magic.ui.theme.FloatingBottomBarStyle
