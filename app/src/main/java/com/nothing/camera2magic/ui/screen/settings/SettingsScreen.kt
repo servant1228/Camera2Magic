@@ -76,14 +76,6 @@ fun SettingsScreenContent(
         ) {
             item { SmallTitle(text = stringResource(R.string.settings_general)) }
             groupedCardItems(keyPrefix = "general", items = listOf(
-                CardItem("playSound") {
-                    SwitchPreference(
-                        title = stringResource(R.string.quick_entry_play_sound),
-                        summary = stringResource(R.string.quick_entry_play_sound_summary),
-                        checked = uiState.playSound,
-                        onCheckedChange = { viewModel.onPlaySoundChanged(it) },
-                    )
-                },
                 CardItem("manuallyRotate") {
                     val rotationItems = listOf("0", "90", "180", "270")
                     OverlaySpinnerPreference(
@@ -92,6 +84,14 @@ fun SettingsScreenContent(
                         title = stringResource(R.string.quick_entry_manually_rotate),
                         summary = stringResource(R.string.quick_entry_manually_rotate_summary),
                         onSelectedIndexChange = { viewModel.onManuallyRotateChanged(it) },
+                    )
+                },
+                CardItem("playSound") {
+                    SwitchPreference(
+                        title = stringResource(R.string.quick_entry_play_sound),
+                        summary = stringResource(R.string.quick_entry_play_sound_summary),
+                        checked = uiState.playSound,
+                        onCheckedChange = { viewModel.onPlaySoundChanged(it) },
                     )
                 },
                 CardItem("injectMenu") {
