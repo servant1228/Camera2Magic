@@ -24,19 +24,23 @@ fun CardSegment(
     modifier: Modifier = Modifier,
     color: Color = MiuixTheme.colorScheme.surfaceContainer,
     contentColor: Color = MiuixTheme.colorScheme.onSurfaceContainer,
-    cornerRadius: Dp = 16.dp,
-    topCornerRadius: Dp = if (isFirst) cornerRadius else 0.dp,
-    bottomCornerRadius: Dp = if (isLast) cornerRadius else 0.dp,
+    cornerRadius: Dp? = null,
+    topCornerRadius: Dp? = null,
+    bottomCornerRadius: Dp? = null,
     outerHorizontalPadding: Dp = 12.dp,
     outerTopPadding: Dp = 0.dp,
     outerBottomPadding: Dp = 0.dp,
     insidePadding: PaddingValues = PaddingValues(0.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val background = if (topCornerRadius == 0.dp && bottomCornerRadius == 0.dp) {
+    // 圆角默认同心跟随系统屏幕圆角（显式传参可覆盖）
+    val resolvedRadius = cornerRadius ?: rememberConcentricCardRadius()
+    val resolvedTopCorner = topCornerRadius ?: if (isFirst) resolvedRadius else 0.dp
+    val resolvedBottomCorner = bottomCornerRadius ?: if (isLast) resolvedRadius else 0.dp
+    val background = if (resolvedTopCorner == 0.dp && resolvedBottomCorner == 0.dp) {
         Modifier.background(color)
     } else {
-        Modifier.squircleSurface(color, topCornerRadius, topCornerRadius, bottomCornerRadius, bottomCornerRadius)
+        Modifier.squircleSurface(color, resolvedTopCorner, resolvedTopCorner, resolvedBottomCorner, resolvedBottomCorner)
     }
     CompositionLocalProvider(LocalContentColor provides contentColor) {
         Column(

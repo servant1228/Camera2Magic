@@ -38,14 +38,10 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,11 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
-import androidx.navigation3.ui.NavDisplayTransitionEffects
+import top.yukonga.miuix.kmp.nav.core.NavDisplay
+import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
+import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
+import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
@@ -108,7 +103,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurDefaults
@@ -216,7 +210,8 @@ private fun MainScreenBackHandler(
 
 @Composable
 private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (ThemeConfig) -> Unit) {
-    val backStack = rememberSaveable(saver = NavBackStackSaver) { mutableStateListOf<NavKey>(Route.Main) }
+    // rememberNavBackStack 内置 JSON 多态持久化（等价于原手写 NavBackStackSaver）
+    val backStack = rememberNavBackStack<Route>(Route.Main)
     val navigator = remember { Navigator(backStack) }
     val pagerState = rememberPagerState(pageCount = { 3 })
     val mainPagerState = rememberMainPagerState(pagerState)
@@ -262,145 +257,114 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
     val factory = LocalViewModelFactory.current
     val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
 
-    val provider = entryProvider<NavKey> {
-        entry<Route.Main> {
-            val pagerContent: @Composable (Modifier, Dp) -> Unit = { pagerModifier, bottomPadding ->
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = pagerModifier,
-                    verticalAlignment = Alignment.Top,
-                ) { page ->
-                    when (page) {
-                        0 -> HomePage(bottomPadding = bottomPadding, onNavigateScope = { mainPagerState.animateToPage(1) })
-                        1 -> ScopePage(bottomPadding = bottomPadding)
-                        2 -> SettingsScreenContent(
-                            viewModel = settingsViewModel,
-                            onThemeConfigChanged = onThemeConfigChanged,
-                            bottomPadding = bottomPadding,
-                            onNavigateThemeSettings = { navigator.push(Route.ThemeSettings) },
-                            onNavigateAbout = { navigator.push(Route.About) },
-                        )
-                    }
-                }
-            }
-
-            Scaffold(
-                bottomBar = {
-                    if (themeConfig.floatingBottomBar) {
-                        if (themeConfig.floatingBottomBarStyle == FloatingBottomBarStyle.IosLike) {
-                            IosLiquidGlassNavigationBar(
-                                items = navigationItems,
-                                selectedIndex = selectedPage,
-                                onItemClick = { index -> mainPagerState.animateToPage(index) },
-                                backdrop = bottomBarBackdrop,
-                                isBlurActive = bottomBarBlurActive,
-                                isDark = LocalAppDarkMode.current,
-                                showLabels = showLabels,
-                            )
-                        } else {
-                            FloatingNavigationBar(
-                                modifier = floatingBarBlurModifier,
-                                color = floatingBarColor,
-                                cornerRadius = floatingPillRadius,
-                            ) {
-                                navigationItems.forEachIndexed { index, item ->
-                                    MiuixFloatingNavigationBarItem(item = item, selected = selectedPage == index, onClick = { mainPagerState.animateToPage(index) }, showLabel = showLabels)
-                                }
-                            }
-                        }
-                    } else {
-                        BlurredBar(backdrop = bottomBarBackdrop, blurActive = bottomBarBlurActive) {
-                            NavigationBar(color = bottomBarColor, mode = barMode) {
-                                navigationItems.forEachIndexed { index, item ->
-                                    NavigationBarItem(selected = selectedPage == index, onClick = { mainPagerState.animateToPage(index) }, icon = item.icon, label = item.label)
-                                }
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-            ) { padding ->
-                pagerContent(
-                    if (bottomBarBackdrop != null) {
-                        Modifier.fillMaxSize().layerBackdrop(bottomBarBackdrop)
-                    } else {
-                        Modifier.fillMaxSize()
-                    },
-                    padding.calculateBottomPadding(),
-                )
-            }
-        }
-
-        entry<Route.ThemeSettings> {
-            ThemeSettingsScreen(
-                viewModel = settingsViewModel,
-                onThemeConfigChanged = onThemeConfigChanged,
-                onBack = { navigator.pop() },
-            )
-        }
-
-        entry<Route.About> {
-            AboutScreen(onBack = { navigator.pop() })
-        }
-
-        entry<Route.AppConfig> { key ->
-            val context = LocalContext.current
-            val repository = LocalConfigRepository.current
-            val label = remember(key.packageName) {
-                runCatching {
-                    val pm = context.packageManager
-                    val info = pm.getApplicationInfo(key.packageName, 0)
-                    pm.getApplicationLabel(info).toString()
-                }.getOrDefault(key.packageName)
-            }
-            AppConfigScreen(
-                packageName = key.packageName,
-                appLabel = label,
-                repository = repository,
-                onBack = { navigator.pop() },
-            )
-        }
-    }
-
     CompositionLocalProvider(LocalNavigator provides navigator) {
         NavDisplay(
             backStack = backStack,
-            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
             onBack = { navigator.pop() },
-            entryProvider = provider,
-            transitionEffects = NavDisplayTransitionEffects(
-                enableCornerClip = true,
-                dimAmount = 0.5f,
-                blockInputDuringTransition = true,
+            effects = NavDisplayEffects(
+                cornerClipRadius = rememberNavSystemCornerRadius(),
             ),
-        )
-    }
-}
+        ) {
+            entry<Route.Main> {
+                val pagerContent: @Composable (Modifier, Dp) -> Unit = { pagerModifier, bottomPadding ->
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = pagerModifier,
+                        verticalAlignment = Alignment.Top,
+                    ) { page ->
+                        when (page) {
+                            0 -> HomePage(bottomPadding = bottomPadding, onNavigateScope = { mainPagerState.animateToPage(1) })
+                            1 -> ScopePage(bottomPadding = bottomPadding)
+                            2 -> SettingsScreenContent(
+                                viewModel = settingsViewModel,
+                                onThemeConfigChanged = onThemeConfigChanged,
+                                bottomPadding = bottomPadding,
+                                onNavigateThemeSettings = { navigator.push(Route.ThemeSettings) },
+                                onNavigateAbout = { navigator.push(Route.About) },
+                            )
+                        }
+                    }
+                }
 
-// Route 是 @Serializable sealed 层级，直接多态编码整个栈；新增路由自动获得持久化能力，无需手工注册
-private val NavBackStackSaver = Saver<SnapshotStateList<NavKey>, List<String>>(
-    save = { backStack ->
-        backStack.mapNotNull { key ->
-            (key as? Route)?.let { Json.encodeToString(Route.serializer(), it) }
-        }.ifEmpty {
-            listOf(Json.encodeToString(Route.serializer(), Route.Main))
-        }
-    },
-    restore = { savedRoutes ->
-        // 版本升降级后可能残留未知路由条目：丢弃该条而非崩溃
-        val restoredRoutes = savedRoutes.mapNotNull { value ->
-            runCatching { Json.decodeFromString(Route.serializer(), value) }.getOrNull()
-        }
-        mutableStateListOf<NavKey>().apply {
-            if (restoredRoutes.isEmpty()) {
-                add(Route.Main)
-            } else {
-                if (restoredRoutes.first() !is Route.Main) add(Route.Main)
-                addAll(restoredRoutes)
+                Scaffold(
+                    bottomBar = {
+                        if (themeConfig.floatingBottomBar) {
+                            if (themeConfig.floatingBottomBarStyle == FloatingBottomBarStyle.IosLike) {
+                                IosLiquidGlassNavigationBar(
+                                    items = navigationItems,
+                                    selectedIndex = selectedPage,
+                                    onItemClick = { index -> mainPagerState.animateToPage(index) },
+                                    backdrop = bottomBarBackdrop,
+                                    isBlurActive = bottomBarBlurActive,
+                                    isDark = LocalAppDarkMode.current,
+                                    showLabels = showLabels,
+                                )
+                            } else {
+                                FloatingNavigationBar(
+                                    modifier = floatingBarBlurModifier,
+                                    color = floatingBarColor,
+                                    cornerRadius = floatingPillRadius,
+                                ) {
+                                    navigationItems.forEachIndexed { index, item ->
+                                        MiuixFloatingNavigationBarItem(item = item, selected = selectedPage == index, onClick = { mainPagerState.animateToPage(index) }, showLabel = showLabels)
+                                    }
+                                }
+                            }
+                        } else {
+                            BlurredBar(backdrop = bottomBarBackdrop, blurActive = bottomBarBlurActive) {
+                                NavigationBar(color = bottomBarColor, mode = barMode) {
+                                    navigationItems.forEachIndexed { index, item ->
+                                        NavigationBarItem(selected = selectedPage == index, onClick = { mainPagerState.animateToPage(index) }, icon = item.icon, label = item.label)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) { padding ->
+                    pagerContent(
+                        if (bottomBarBackdrop != null) {
+                            Modifier.fillMaxSize().layerBackdrop(bottomBarBackdrop)
+                        } else {
+                            Modifier.fillMaxSize()
+                        },
+                        padding.calculateBottomPadding(),
+                    )
+                }
+            }
+
+            entry<Route.ThemeSettings> {
+                ThemeSettingsScreen(
+                    viewModel = settingsViewModel,
+                    onThemeConfigChanged = onThemeConfigChanged,
+                    onBack = { navigator.pop() },
+                )
+            }
+
+            entry<Route.About> {
+                AboutScreen(onBack = { navigator.pop() })
+            }
+
+            entry<Route.AppConfig> { key ->
+                val context = LocalContext.current
+                val repository = LocalConfigRepository.current
+                val label = remember(key.packageName) {
+                    runCatching {
+                        val pm = context.packageManager
+                        val info = pm.getApplicationInfo(key.packageName, 0)
+                        pm.getApplicationLabel(info).toString()
+                    }.getOrDefault(key.packageName)
+                }
+                AppConfigScreen(
+                    packageName = key.packageName,
+                    appLabel = label,
+                    repository = repository,
+                    onBack = { navigator.pop() },
+                )
             }
         }
-    },
-)
+    }
+}
 
 @Composable
 private fun MiuixFloatingNavigationBarItem(

@@ -1,7 +1,7 @@
 package com.nothing.camera2magic.ui.navigation3
 
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.navigation3.runtime.NavKey
+import top.yukonga.miuix.kmp.nav.core.NavKey
 
 import android.util.Log
 

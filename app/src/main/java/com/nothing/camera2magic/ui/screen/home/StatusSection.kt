@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nothing.camera2magic.BuildConfig
 import com.nothing.camera2magic.R
+import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.ui.theme.RunState
 import com.nothing.camera2magic.ui.theme.StatusColors
 import com.nothing.camera2magic.viewmodel.HomeUiState
@@ -89,6 +90,7 @@ private fun StatusContent(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
+            cornerRadius = rememberConcentricCardRadius(),
             colors = CardDefaults.defaultColors(color = statusContainer),
             pressFeedbackType = PressFeedbackType.Tilt,
         ) {
@@ -141,6 +143,7 @@ private fun StatusContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                cornerRadius = rememberConcentricCardRadius(),
                 insideMargin = PaddingValues(16.dp),
                 onClick = { showHookModeDialog = true },
                 pressFeedbackType = PressFeedbackType.Sink,
@@ -161,6 +164,7 @@ private fun StatusContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                cornerRadius = rememberConcentricCardRadius(),
                 insideMargin = PaddingValues(16.dp),
                 onClick = { onNavigateScope() },
                 pressFeedbackType = PressFeedbackType.Sink,

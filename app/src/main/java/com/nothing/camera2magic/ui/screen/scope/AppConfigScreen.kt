@@ -62,6 +62,7 @@ import com.nothing.camera2magic.ui.component.BlurredBar
 import com.nothing.camera2magic.ui.component.CardSegment
 import com.nothing.camera2magic.ui.component.ListPopupDefaults
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
+import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.utils.MediaPathResolver
 import com.nothing.camera2magic.viewmodel.ConfigRepository
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +71,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
@@ -296,6 +298,7 @@ private fun AppConfigInner(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
                 .padding(bottom = 12.dp),
+            cornerRadius = rememberConcentricCardRadius(),
             insideMargin = PaddingValues(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -335,6 +338,7 @@ private fun AppConfigInner(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
                 .padding(bottom = 12.dp),
+            cornerRadius = rememberConcentricCardRadius(),
         ) {
             SwitchPreference(
                 title = stringResource(R.string.app_config_enable_hook),
@@ -463,6 +467,8 @@ private fun TopBar(
                 }
                 OverlayListPopup(
                     show = showTopPopup.value,
+                    // 库内 ListPopupContent 写死 16dp 圆角且无参数，外层 squircle 裁剪跟随系统圆角
+                    popupModifier = Modifier.squircleClip(rememberConcentricCardRadius()),
                     popupPositionProvider = ListPopupDefaults.MenuPositionProvider,
                     alignment = PopupPositionProvider.Align.TopEnd,
                     onDismissRequest = { showTopPopup.value = false },

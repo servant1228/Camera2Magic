@@ -50,6 +50,7 @@ import com.nothing.camera2magic.ui.component.effect.BgEffectBackground
 import com.nothing.camera2magic.ui.component.effect.ColorBlendToken
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
 import com.nothing.camera2magic.ui.component.rememberBlurEnabled
+import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.ui.theme.LocalAppDarkMode
 import com.nothing.camera2magic.ui.util.horizontalCutoutPadding
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -169,6 +170,7 @@ private fun AboutContent(
     val blurEnabled by rememberBlurEnabled()
     val effectBackground = remember(blurEnabled) { isRuntimeShaderSupported() && blurEnabled }
 
+    val cardRadius = rememberConcentricCardRadius()
     val cardBlendColors = remember(isDark) {
         if (isDark) ColorBlendToken.Overlay_Thin_Light
         else ColorBlendToken.Pured_Regular_Light
@@ -296,13 +298,14 @@ private fun AboutContent(
                                     if (blurEnabled) {
                                         Modifier.textureBlur(
                                             backdrop = backdrop,
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(cardRadius),
                                             blurRadius = 60f,
                                             colors = BlurColors(blendColors = cardBlendColors),
                                             enabled = true,
                                         )
                                     } else Modifier
                                 ),
+                            cornerRadius = cardRadius,
                             colors = CardDefaults.defaultColors(
                                 if (blurEnabled) Color.Transparent else colorScheme.surfaceContainer,
                                 Color.Transparent,
@@ -328,13 +331,14 @@ private fun AboutContent(
                                     if (blurEnabled) {
                                         Modifier.textureBlur(
                                             backdrop = backdrop,
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(cardRadius),
                                             blurRadius = 60f,
                                             colors = BlurColors(blendColors = cardBlendColors),
                                             enabled = true,
                                         )
                                     } else Modifier
                                 ),
+                            cornerRadius = cardRadius,
                             colors = CardDefaults.defaultColors(
                                 if (blurEnabled) Color.Transparent else colorScheme.surfaceContainer,
                                 Color.Transparent,

@@ -163,13 +163,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_21)
         }
     }
 
@@ -295,8 +295,7 @@ dependencies {
     implementation libs.androidx.lifecycle.runtime.compose
     implementation libs.kotlinx.serialization.json
     implementation libs.hiddenapibypass
-    implementation libs.androidx.navigation3.runtime
-    implementation libs.miuix.navigation3.ui
+    implementation libs.miuix.nav
     implementation libs.androidx.navigationevent
     implementation libs.androidx.compose.material.icons.extended
 

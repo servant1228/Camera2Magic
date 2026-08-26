@@ -17,7 +17,7 @@ LSPosed / libxposed（API 102）的 Android 虚拟摄像头模块。单模块 `:
 
 Kotlin 2.4（AGP 9 内置，不加独立 kotlin 插件）+ kotlinx.serialization。UI：Compose + Miuix 0.9.3（`-ui/-squircle/-icons/-blur/-preference` + `-navigation3-ui`）+ navigation3 + material-icons-extended。播放：media3-exoplayer（自定义 DataSource）。Hook：libxposed `api:102` compileOnly + `service:102` implementation。其他：hiddenapibypass、accompanist-permissions、kotlinx-collections-immutable。
 
-**依赖版本唯一真源 = [gradle/libs.versions.toml](gradle/libs.versions.toml)**，坐标/SDK 在 [app/build.gradle](app/build.gradle)；新增依赖一律进 catalog，不在 build.gradle 硬编码版本号（现存少数硬编码条目是历史遗留，触及时顺手迁入 catalog）。SDK：compileSdk 37 / minSdk 33 / targetSdk 36，jvmTarget 11。Gradle wrapper 9.5.0。
+**依赖版本唯一真源 = [gradle/libs.versions.toml](gradle/libs.versions.toml)**，坐标/SDK 在 [app/build.gradle](app/build.gradle)；新增依赖一律进 catalog，不在 build.gradle 硬编码版本号（现存少数硬编码条目是历史遗留，触及时顺手迁入 catalog）。SDK：compileSdk 37 / minSdk 33 / targetSdk 36，jvmTarget 21（miuix-nav 的 inline API 要求）。
 
 ## 代码地图
 

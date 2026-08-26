@@ -1,6 +1,6 @@
 package com.nothing.camera2magic.ui.navigation3
 
-import androidx.navigation3.runtime.NavKey
+import top.yukonga.miuix.kmp.nav.core.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable

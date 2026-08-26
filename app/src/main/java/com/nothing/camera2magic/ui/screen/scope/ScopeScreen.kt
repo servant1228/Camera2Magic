@@ -60,6 +60,7 @@ import com.nothing.camera2magic.ui.component.SearchBox
 import com.nothing.camera2magic.ui.component.SearchPager
 import com.nothing.camera2magic.ui.component.SearchStatus
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
+import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.viewmodel.HomeViewModel
 import com.nothing.camera2magic.viewmodel.LocalViewModelFactory
 import top.yukonga.miuix.kmp.basic.Card
@@ -271,6 +272,7 @@ private fun ScopeAppCard(app: ScopeApp, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
             .padding(bottom = 12.dp),
+        cornerRadius = rememberConcentricCardRadius(),
         onClick = onClick,
         pressFeedbackType = PressFeedbackType.Sink,
         showIndication = true,
