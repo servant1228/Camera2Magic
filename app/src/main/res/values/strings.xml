@@ -104,6 +104,10 @@
     <string name="app_config_launch_app">Launch</string>
     <string name="app_config_force_stop">Force Stop</string>
     <string name="app_config_restart">Restart</string>
+    <string name="app_config_cannot_launch">Cannot launch this app</string>
+    <string name="app_config_force_stopped">Force stopped</string>
+    <string name="app_config_no_root">No root permission</string>
+    <string name="app_config_media_copy_failed">Failed to copy media to module</string>
     <string name="scope_show_system_apps">Show System Apps</string>
     <string name="sort_by_name">Sort by Name</string>
     <string name="sort_by_package_name">Sort by Package Name</string>

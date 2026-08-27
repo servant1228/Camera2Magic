@@ -105,6 +105,10 @@
     <string name="app_config_launch_app">启动</string>
     <string name="app_config_force_stop">强制停止</string>
     <string name="app_config_restart">重新启动</string>
+    <string name="app_config_cannot_launch">无法启动该应用</string>
+    <string name="app_config_force_stopped">已强制停止</string>
+    <string name="app_config_no_root">没有 Root 权限</string>
+    <string name="app_config_media_copy_failed">媒体拷贝到模块失败</string>
     <string name="scope_show_system_apps">显示系统应用</string>
     <string name="sort_by_name">按名称排序</string>
     <string name="sort_by_package_name">按包名排序</string>

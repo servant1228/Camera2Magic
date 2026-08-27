@@ -1,6 +1,7 @@
 package com.nothing.camera2magic.ui.screen.scope
 
 import android.content.Intent
+import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,7 +14,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -66,6 +66,7 @@ import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.utils.MediaPathResolver
 import com.nothing.camera2magic.viewmodel.ConfigRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -139,11 +140,51 @@ fun AppConfigScreen(
     }
 
     var pendingMediaMode by remember { mutableStateOf<MediaMode?>(null) }
+    // 每模式一个拷贝任务：删除/重选时 cancel 旧任务，防止「删除后拷贝完成又写回远端键」的竞态
+    // copyJob 仍指向本任务（未被 cancel/替换）才回滚，说明失败态对应当前 UI 状态
+    var copyJob by remember { mutableStateOf<Pair<MediaMode, Job>?>(null) }
+
+    fun copyToRemote(uri: Uri, mode: MediaMode) {
+        copyJob?.second?.cancel()
+        val job = scope.launch(Dispatchers.IO) {
+            val mimeType = context.contentResolver.getType(uri)
+            val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+            val fileName = if (extension != null) "${mode.name.lowercase()}_$packageName.$extension" else "${mode.name.lowercase()}_$packageName"
+            val success = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    repository.prepareRemoteMedia(fileName, input)
+                } ?: false
+            }.getOrDefault(false)
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    when (mode) {
+                        MediaMode.PHOTO -> repository.setAppRemotePhoto(packageName, fileName)
+                        MediaMode.VIDEO -> repository.setAppRemoteVideo(packageName, fileName)
+                    }
+                } else if (copyJob?.first == mode) {
+                    when (mode) {
+                        MediaMode.PHOTO -> {
+                            photoUri = null
+                            repository.setAppPhotoUri(packageName, null)
+                        }
+                        MediaMode.VIDEO -> {
+                            videoUri = null
+                            repository.setAppVideoUri(packageName, null)
+                        }
+                    }
+                    Toast.makeText(context, context.getString(R.string.app_config_media_copy_failed), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        copyJob = mode to job
+    }
+
     val pickMediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         val mode = pendingMediaMode ?: return@rememberLauncherForActivityResult
         pendingMediaMode = null
         if (uri == null) return@rememberLauncherForActivityResult
-        context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        // Photo Picker 的 URI 在部分 ROM（API 33）不可持久化授权，失败不致命：媒体已被拷贝转存，URI 仅本进程内使用
+        runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         when (mode) {
             MediaMode.PHOTO -> {
                 photoUri = uri.toString()
@@ -154,44 +195,79 @@ fun AppConfigScreen(
                 repository.setAppVideoUri(packageName, uri.toString())
             }
         }
-        scope.launch(Dispatchers.IO) {
-            val mimeType = context.contentResolver.getType(uri)
-            val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-            val fileName = if (extension != null) "${mode.name.lowercase()}_$packageName.$extension" else "${mode.name.lowercase()}_$packageName"
-            val success = runCatching {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    repository.prepareRemoteMedia(fileName, input)
-                } ?: false
-            }.getOrDefault(false)
-            if (success) {
-                when (mode) {
-                    MediaMode.PHOTO -> repository.setAppRemotePhoto(packageName, fileName)
-                    MediaMode.VIDEO -> repository.setAppRemoteVideo(packageName, fileName)
-                }
+        copyToRemote(uri, mode)
+    }
+
+    // 清空某模式的本地 + 远端媒体状态；拷贝进行中则先取消，避免完成回调把已删除的状态写回
+    fun clearMedia(mode: MediaMode) {
+        copyJob?.takeIf { it.first == mode }?.second?.cancel()
+        when (mode) {
+            MediaMode.PHOTO -> {
+                repository.getAppRemotePhoto(packageName)?.let { repository.deleteRemoteMedia(it) }
+                repository.setAppRemotePhoto(packageName, null)
+                photoUri = null
+                repository.setAppPhotoUri(packageName, null)
+            }
+            MediaMode.VIDEO -> {
+                repository.getAppRemoteVideo(packageName)?.let { repository.deleteRemoteMedia(it) }
+                repository.setAppRemoteVideo(packageName, null)
+                videoUri = null
+                repository.setAppVideoUri(packageName, null)
             }
         }
     }
 
+    // su 命令统一走 IO 线程并判定 exit code；su 不存在/被拒都返回 false，绝不给假的成功提示
+    suspend fun runSuCommand(command: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            // 消费输出防止管道写满阻塞
+            process.inputStream.use { it.readBytes() }
+            process.errorStream.use { it.readBytes() }
+            process.waitFor() == 0
+        }.getOrDefault(false)
+    }
+
+    fun isAppRunning(): Boolean = runCatching {
+        // /proc/<pid>/cmdline 第一段即进程名，无需 ps 解析
+        java.io.File("/proc").listFiles()
+            ?.any { dir ->
+                dir.isDirectory && dir.name.all { c -> c.isDigit() } &&
+                    java.io.File(dir, "cmdline").inputStream().use {
+                        it.readBytes().toString(Charsets.UTF_8).substringBefore('\u0000')
+                    } == packageName
+            } == true
+    }.getOrDefault(false)
+
     val onLaunchApp: () -> Unit = {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) context.startActivity(intent)
-        else Toast.makeText(context, "Cannot launch", Toast.LENGTH_SHORT).show()
+        else Toast.makeText(context, context.getString(R.string.app_config_cannot_launch), Toast.LENGTH_SHORT).show()
     }
     val onForceStopApp: () -> Unit = {
-        runCatching {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", "am force-stop $packageName"))
-            Toast.makeText(context, "Force stopped", Toast.LENGTH_SHORT).show()
-        }.onFailure { Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show() }
+        scope.launch {
+            if (runSuCommand("am force-stop $packageName")) {
+                Toast.makeText(context, context.getString(R.string.app_config_force_stopped), Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, context.getString(R.string.app_config_no_root), Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     val onRestartApp: () -> Unit = {
-        runCatching {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", "am force-stop $packageName"))
-        }.onFailure { Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show() }
         scope.launch {
-            delay(500)
+            if (!runSuCommand("am force-stop $packageName")) {
+                Toast.makeText(context, context.getString(R.string.app_config_no_root), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            // 等进程真正退出再启动（force-stop 返回 ≠ 进程已死），上限 5s
+            var waited = 0
+            while (waited < 5000 && isAppRunning()) {
+                delay(100)
+                waited += 100
+            }
             val intent = context.packageManager.getLaunchIntentForPackage(packageName)
             if (intent != null) context.startActivity(intent)
-            else Toast.makeText(context, "Cannot launch", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(context, context.getString(R.string.app_config_cannot_launch), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -233,20 +309,14 @@ fun AppConfigScreen(
                         photoUri = photoUri,
                         photoDisplayPath = photoDisplayPath,
                         onPhotoUriChange = {
-                            if (it == null) {
-                                repository.getAppRemotePhoto(packageName)?.let { fn -> repository.deleteRemoteMedia(fn) }
-                                repository.setAppRemotePhoto(packageName, null)
-                            }
-                            photoUri = it; repository.setAppPhotoUri(packageName, it)
+                            if (it == null) clearMedia(MediaMode.PHOTO)
+                            else { photoUri = it; repository.setAppPhotoUri(packageName, it) }
                         },
                         videoUri = videoUri,
                         videoDisplayPath = videoDisplayPath,
                         onVideoUriChange = {
-                            if (it == null) {
-                                repository.getAppRemoteVideo(packageName)?.let { fn -> repository.deleteRemoteMedia(fn) }
-                                repository.setAppRemoteVideo(packageName, null)
-                            }
-                            videoUri = it; repository.setAppVideoUri(packageName, it)
+                            if (it == null) clearMedia(MediaMode.VIDEO)
+                            else { videoUri = it; repository.setAppVideoUri(packageName, it) }
                         },
                         pendingMediaMode = pendingMediaMode,
                         onPickMedia = { mode ->
