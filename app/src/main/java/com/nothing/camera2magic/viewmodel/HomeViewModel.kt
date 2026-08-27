@@ -6,9 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nothing.camera2magic.BuildConfig
 import com.nothing.camera2magic.utils.Dog
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,19 +37,19 @@ class HomeViewModel(
     init {
         loadInitialState()
         Dog.enabled = repository.enableLog
-        Dog.i(TAG, "Camera2Magic started, module=${repository.moduleEnabled}", repository.enableLog)
+        Dog.i(TAG, "Camera2Magic started", repository.enableLog)
         viewModelScope.launch {
             repository.xposedActive.collect { active ->
                 _uiState.update { it.copy(xposedActive = active) }
             }
         }
-        // Delay read of scope list — Xposed service binds asynchronously
+        // scope 列表依赖 XposedService binder，服务翻真（含进程早已绑好的冷启动）后立即拉取；
+        // 服务死亡重绑时 distinctUntilChanged + filter 会再次触发，列表自动恢复
         viewModelScope.launch {
-            delay(500)
-            val scope = repository.getScopeAppList()
-            if (scope != null) {
-                _uiState.update { it.copy(scopeAppList = scope) }
-            }
+            repository.xposedActive
+                .distinctUntilChanged()
+                .filter { it }
+                .collect { refreshScopeList() }
         }
     }
 

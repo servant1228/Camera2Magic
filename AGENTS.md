@@ -7,7 +7,6 @@ LSPosed / libxposed（API 102）的 Android 虚拟摄像头模块。单模块 `:
 ## 工作规程
 
 - 每次改动至少跑与变更匹配的 Gradle 任务：改 Kotlin 用 `./gradlew :app:compileDebugKotlin`（秒级）；验证打包 / 资源才 `./gradlew assembleDebug`（分钟级）。
-- **`testDebugUnitTest` 当前是坏的**：[ModuleStatusTest](app/src/test/java/com/nothing/camera2magic/ui/screen/home/ModuleStatusTest.kt) 仍按旧双参签名调用 `moduleStatus(xposedActive, masterSwitchEnabled)` 并断言已删除的 `ModuleStatus.Disabled`，而生产实现是单参两态（见 [ModuleStatus.kt](app/src/main/java/com/nothing/camera2magic/ui/screen/home/ModuleStatus.kt)）——测试源集编译不过。改这块前先对齐两者，不要绕过或删除断言了事。
 - 保留用户已有的未提交改动；不用破坏性 reset/checkout；不读取、不输出、不提交 `app/keystore.properties` 与任何 keystore 文件。
 - 完成后先报告变更与验证结果。**除非用户在当前请求中明确授权，不执行 `git add`/`commit`/`push`**。
 - Commit 用 `<type>: <中文摘要>` 或纯中文摘要（type 取 `feat`/`fix`/`docs`/`chore`，与现有历史一致），主题行 ≤ 72 字符、无句尾句号；body 只讲代码里看不出的根因与取舍，不逐文件复述 diff。**每次发布前必须先产生新提交**——versionCode = git 提交数，不提交则 CI 产物 versionCode 不递增。
@@ -56,11 +55,11 @@ MainActivity → CompositionLocal         MagicHook.onPackageReady(isFirstPackag
 
 ### 配置流
 
-- `ConfigRepository.save()` 双写本地 prefs 与 remote prefs；XposedService 绑定成功后 `syncAllToRemote()` 把本地全部键整体重推一次（覆盖 LSPosed 重装 / 数据被清的场景）。
+- `ConfigRepository.save()` 双写本地 prefs 与 remote prefs；XposedService 绑定成功后 `syncAllToRemote()` 把本地全部键整体重推一次（覆盖 LSPosed 重装 / 数据被清的场景）。**service listener 是进程级单例**（companion 持有、`listenerRegistered` 防重入）：Activity 重建会 new 新 ConfigRepository 实例，绝不能把 listener 注册改回 `init` 里无守卫的实例级写法——那会随重建累积泄漏并重复触发全量同步。
 - Hook 侧 `SourceManager.refreshPrefs()` 是所有键的唯一读取点，按当前包名（`processName.substringBefore(":")`，剥掉 `:xxx` 子进程后缀）解析 per-app 键：`app_hook_<pkg>`（默认 true）+ `app_media_mode_<pkg>`（photo/video）+ `app_remote_photo/video_<pkg>`。无有效媒体时 `validMedia = null`，不替换画面。全局媒体键已移除，别再加回来。
 - **新增配置键必须两侧同时加**：`SourceManager`（Hook 侧读取）与 `ConfigRepository`（宿主侧读写 + 远程同步），键名保持 snake_case。只加一侧 = 配置静默不生效，无任何报错。
 - `refreshPrefs()` 整体包在 `catch (e: Exception) { /* Do Nothing */ }` 里——配置读取失败是静默的，调试时先怀疑这里而不是 Hook 本身。
-- **门控语义**：`readyForHook = moduleEnabled && appHookEnabled`，仅此两项。`hook_enabled_packages` 只做记录与同步、**不参与拦截门控**；「关闭某应用」由 `app_hook_<pkg>` 开关表达，「关闭媒体」由不选媒体表达。`main_inject_menu` 目前只是宿主 UI 开关，Hook 侧没有实现，不要当作已生效功能引用。
+- **门控语义**：`readyForHook = appHookEnabled`（仅 `app_hook_<pkg>` 一项）。总开关 `main_module_enabled` 已随宿主 UI 的模块开关一起删除，模块级启停只在 LSPosed 里做，不要再把该键加回任何一侧。`hook_enabled_packages` 只做记录与同步、**不参与拦截门控**；「关闭某应用」由 `app_hook_<pkg>` 开关表达，「关闭媒体」由不选媒体表达。`main_inject_menu` 目前只是宿主 UI 开关，Hook 侧没有实现，不要当作已生效功能引用。
 
 ### Hook 拦截纪律
 

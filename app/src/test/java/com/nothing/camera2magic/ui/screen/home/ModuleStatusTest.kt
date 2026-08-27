@@ -6,18 +6,12 @@ import org.junit.Test
 class ModuleStatusTest {
 
     @Test
-    fun enabledWhenXposedActiveAndMasterSwitchOn() {
-        assertEquals(ModuleStatus.Enabled, moduleStatus(xposedActive = true, masterSwitchEnabled = true))
+    fun enabledWhenXposedActive() {
+        assertEquals(ModuleStatus.Enabled, moduleStatus(xposedActive = true))
     }
 
     @Test
-    fun inactiveWhenXposedNotActiveRegardlessOfMasterSwitch() {
-        assertEquals(ModuleStatus.Inactive, moduleStatus(xposedActive = false, masterSwitchEnabled = true))
-        assertEquals(ModuleStatus.Inactive, moduleStatus(xposedActive = false, masterSwitchEnabled = false))
-    }
-
-    @Test
-    fun disabledWhenXposedActiveButMasterSwitchOff() {
-        assertEquals(ModuleStatus.Disabled, moduleStatus(xposedActive = true, masterSwitchEnabled = false))
+    fun inactiveWhenXposedNotActive() {
+        assertEquals(ModuleStatus.Inactive, moduleStatus(xposedActive = false))
     }
 }

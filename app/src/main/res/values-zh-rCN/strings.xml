@@ -5,7 +5,6 @@
     <string name="permission_rationale_title">需要媒体权限</string>
     <string name="permission_rationale_description">为了加载您的视频和图片作为虚拟摄像头内容，应用需要访问您设备上的媒体文件。</string>
     <string name="grant_permission_button_name">授予权限</string>
-    <string name="module_switch_name">开启模块</string>
     <string name="home_device_model">机型</string>
     <string name="home_device_system">系统</string>
     <string name="home_device_architecture">架构</string>
@@ -15,6 +14,7 @@
     <string name="home_status_enabled">模块已启用</string>
     <string name="home_status_inactive">模块未激活</string>
     <string name="home_status_inactive_hint">请先在 LSPosed 中启用模块</string>
+    <string name="home_status_empty_scope_hint">模块已激活，但作用域中还没有应用</string>
     <string name="home_hook_mode">Hook 模式</string>
     <string name="quick_entry_play_sound">播放声音</string>
     <string name="quick_entry_enable_log">启用日志</string>

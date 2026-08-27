@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircleOutline
-import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import com.nothing.camera2magic.BuildConfig
 import com.nothing.camera2magic.R
 import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
-import com.nothing.camera2magic.ui.theme.RunState
 import com.nothing.camera2magic.ui.theme.StatusColors
 import com.nothing.camera2magic.viewmodel.HomeUiState
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -65,14 +61,8 @@ private fun StatusContent(
     onNavigateScope: () -> Unit,
 ) {
     val status = moduleStatus(uiState.xposedActive)
-    val statusIcon = if (status == ModuleStatus.Enabled) {
-        Icons.Rounded.CheckCircleOutline
-    } else {
-        Icons.Rounded.RemoveCircleOutline
-    }
-    val runState = if (status == ModuleStatus.Enabled) RunState.Running else RunState.Stopped
-    val statusTint = StatusColors.runState(runState)
-    val statusContainer = StatusColors.runStateContainer(runState)
+    val statusTint = StatusColors.runState(status.runState)
+    val statusContainer = StatusColors.runStateContainer(status.runState)
 
     var showHookModeDialog by remember { mutableStateOf(false) }
     var showScopeDialog by remember { mutableStateOf(false) }
@@ -103,7 +93,7 @@ private fun StatusContent(
                 ) {
                     Icon(
                         modifier = Modifier.size(170.dp),
-                        imageVector = statusIcon,
+                        imageVector = status.icon,
                         tint = statusTint,
                         contentDescription = null,
                     )
@@ -114,10 +104,7 @@ private fun StatusContent(
                         .padding(all = 16.dp),
                 ) {
                     Text(
-                        text = when (status) {
-                            ModuleStatus.Enabled -> stringResource(R.string.home_status_enabled)
-                            ModuleStatus.Inactive -> stringResource(R.string.home_status_inactive)
-                        },
+                        text = stringResource(status.titleRes),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MiuixTheme.colorScheme.onSurface,
@@ -186,9 +173,15 @@ private fun StatusContent(
         }
     }
 
-    if (status == ModuleStatus.Inactive) {
+    // 未激活提示优先；已激活但 scope 一个应用都没有时，hook 永远不会生效，同样给出引导
+    val hintRes = when {
+        status == ModuleStatus.Inactive -> R.string.home_status_inactive_hint
+        scopeAppList.isEmpty() -> R.string.home_status_empty_scope_hint
+        else -> null
+    }
+    hintRes?.let { res ->
         Text(
-            text = stringResource(R.string.home_status_inactive_hint),
+            text = stringResource(res),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)

@@ -8,7 +8,6 @@ import com.nothing.camera2magic.utils.Dog
 object SourceManager {
 
     private const val TAG = "[MediaSource]"
-    private const val KEY_MODULE_ENABLED = "main_module_enabled"
     private const val KEY_PLAY_SOUND = "main_play_sound"
     private const val KEY_ENABLE_LOG = "main_enable_log"
     private const val KEY_SHOW_TOAST = "main_show_toast"
@@ -17,9 +16,6 @@ object SourceManager {
     private lateinit var prefs: SharedPreferences
     private var rotationListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
-    @Volatile
-    var moduleEnabled: Boolean = true
-        private set
     @Volatile
     var playSound: Boolean = false
         private set
@@ -58,10 +54,7 @@ object SourceManager {
         private set
 
     val readyForHook: Boolean
-        get() {
-            if (!moduleEnabled) return false
-            return appHookEnabled
-        }
+        get() = appHookEnabled
 
     fun init(remotePrefs: SharedPreferences) {
         this.prefs = remotePrefs
@@ -123,10 +116,6 @@ object SourceManager {
     fun refreshAndDispatch() {
         ImageReaderHooker.invalidateCache()
         refreshPrefs()
-        if (!moduleEnabled) {
-            updateState(null, "Module disabled.")
-            return
-        }
 
         val media = validMedia
         if (media == null) {
@@ -140,7 +129,6 @@ object SourceManager {
     private fun refreshPrefs() {
         try {
             if (!::prefs.isInitialized) return
-            moduleEnabled = prefs.getBoolean(KEY_MODULE_ENABLED, true)
             playSound = prefs.getBoolean(KEY_PLAY_SOUND, false)
             enableLog = prefs.getBoolean(KEY_ENABLE_LOG, false)
             showToast = prefs.getBoolean(KEY_SHOW_TOAST, true)

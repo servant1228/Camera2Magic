@@ -23,61 +23,86 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         @Volatile
         private var sharedService: XposedService? = null
 
+        // 供进程级 listener 全量同步用的 prefs 引用（Android 同名 prefs 本就是单例，重建实例只是刷新指向）
+        @Volatile
+        private var activePrefs: SharedPreferences? = null
+
+        @Volatile
+        private var listenerRegistered = false
+
         private val _xposedActive = MutableStateFlow(false)
+
+        // 进程内唯一的 service listener：只触碰 companion 状态，
+        // 不持有任何 ConfigRepository 实例（Activity 重建会 new 新实例，实例级 listener 会泄漏并重复 syncAllToRemote）
+        private val serviceListener = object : XposedServiceHelper.OnServiceListener {
+            override fun onServiceBind(service: XposedService) {
+                sharedService = service
+                _xposedActive.value = true
+                Dog.i(TAG, "xposed service bound")
+                syncAllToRemote()
+            }
+
+            override fun onServiceDied(service: XposedService) {
+                sharedService = null
+                _xposedActive.value = false
+                Dog.w(TAG, "xposed service died")
+            }
+        }
+
+        private fun syncAllToRemote() {
+            val service = sharedService ?: return
+            val prefs = activePrefs ?: return
+            runCatching {
+                service.getRemotePreferences(GROUP_NAME).edit {
+                    prefs.all.forEach { (key, value) ->
+                        putAny(key, value)
+                    }
+                }
+            }.onFailure { e ->
+                Dog.e(TAG, "[:IPC Error] ${e.message}", e)
+            }
+        }
+
+        private fun SharedPreferences.Editor.putAny(key: String, value: Any?) {
+            when (value) {
+                is Boolean -> putBoolean(key, value)
+                is Int -> putInt(key, value)
+                is Long -> putLong(key, value)
+                is Float -> putFloat(key, value)
+                is String -> putString(key, value)
+                else -> remove(key) // 处理 null 或不支持的类型
+            }
+        }
     }
 
     val xposedActive: StateFlow<Boolean> = _xposedActive.asStateFlow()
 
-    private var xposedService: XposedService? = null
-
     init {
-        xposedService = sharedService
+        activePrefs = prefs
+        if (!listenerRegistered) {
+            listenerRegistered = true
+            XposedServiceHelper.registerListener(serviceListener)
+        }
         if (sharedService != null) {
             _xposedActive.value = true
         }
-        XposedServiceHelper.registerListener(object : XposedServiceHelper.OnServiceListener {
-            override fun onServiceBind(service: XposedService) {
-                xposedService = service
-                sharedService = service
-                _xposedActive.value = true
-                Dog.i(TAG, "xposed service bound", enableLog)
-                syncAllToRemote()
-            }
-            override fun onServiceDied(service: XposedService) {
-                xposedService = null
-                sharedService = null
-                _xposedActive.value = false
-                Dog.w(TAG, "xposed service died", enableLog)
-            }
-        })
     }
 
     private fun <R> safeExecute(default: R, block: (XposedService) -> R): R {
-        val service = xposedService ?: return default
+        val service = sharedService ?: return default
         return runCatching {
             block(service)
         }.onFailure { e ->
-            Dog.e(TAG, "[:IPC Error] ${e.message}", e, enableLog)
+            Dog.e(TAG, "[:IPC Error] ${e.message}", e)
         }.getOrDefault(default)
     }
 
     private fun safeExecute(block: (XposedService) -> Unit) {
-        val service = xposedService ?: return
+        val service = sharedService ?: return
         runCatching {
             block(service)
         }.onFailure { e ->
-            Dog.e(TAG, "[:IPC Error] ${e.message}", e, enableLog)
-        }
-    }
-
-    private fun SharedPreferences.Editor.putAny(key: String, value: Any?) {
-        when (value) {
-            is Boolean -> putBoolean(key, value)
-            is Int -> putInt(key, value)
-            is Long -> putLong(key, value)
-            is Float -> putFloat(key, value)
-            is String -> putString(key, value)
-            else -> remove(key) // 处理 null 或不支持的类型
+            Dog.e(TAG, "[:IPC Error] ${e.message}", e)
         }
     }
 
@@ -88,17 +113,6 @@ class ConfigRepository(private val prefs: SharedPreferences) {
                 putAny(key, value)
             }
             Dog.i(TAG, "remote saved: $key = $value")
-        }
-    }
-
-    private fun syncAllToRemote() {
-        xposedService?.let { service ->
-            val remotePrefs = service.getRemotePreferences(GROUP_NAME)
-            remotePrefs.edit {
-                prefs.all.forEach { (key, value) ->
-                    putAny(key, value)
-                }
-            }
         }
     }
 
@@ -125,10 +139,6 @@ class ConfigRepository(private val prefs: SharedPreferences) {
     fun deleteRemoteMedia(fileName: String) {
         safeExecute { it.deleteRemoteFile(fileName) }
     }
-
-    var moduleEnabled: Boolean
-        get() = prefs.getBoolean("main_module_enabled", true)
-        set(value) = save("main_module_enabled", value)
 
     var playSound: Boolean
         get() = prefs.getBoolean("main_play_sound", false)
