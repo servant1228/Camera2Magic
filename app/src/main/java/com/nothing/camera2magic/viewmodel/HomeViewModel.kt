@@ -8,7 +8,6 @@ import com.nothing.camera2magic.BuildConfig
 import com.nothing.camera2magic.utils.Dog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -44,10 +43,9 @@ class HomeViewModel(
             }
         }
         // scope 列表依赖 XposedService binder，服务翻真（含进程早已绑好的冷启动）后立即拉取；
-        // 服务死亡重绑时 distinctUntilChanged + filter 会再次触发，列表自动恢复
+        // 服务死亡重绑会再次翻真，列表自动恢复。StateFlow 自带去重，翻假不触发。
         viewModelScope.launch {
             repository.xposedActive
-                .distinctUntilChanged()
                 .filter { it }
                 .collect { refreshScopeList() }
         }

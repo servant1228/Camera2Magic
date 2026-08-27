@@ -6,6 +6,7 @@
     <string name="grant_permission_button_name">Grant Permission</string>
     <string name="home_device_model">Model</string>
     <string name="home_device_system">System</string>
+    <string name="home_device_lsposed">LSPosed</string>
     <string name="home_device_architecture">Architecture</string>
     <string name="nav_home">Home</string>
     <string name="nav_scope">Scope</string>

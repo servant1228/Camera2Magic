@@ -32,6 +32,9 @@ class ConfigRepository(private val prefs: SharedPreferences) {
 
         private val _xposedActive = MutableStateFlow(false)
 
+        // 框架版本（如 "1.10.1 (10798)"），服务绑定时抓取；binder 死亡不清空（框架版本是设备级事实）
+        private val _frameworkInfo = MutableStateFlow<String?>(null)
+
         // 进程内唯一的 service listener：只触碰 companion 状态，
         // 不持有任何 ConfigRepository 实例（Activity 重建会 new 新实例，实例级 listener 会泄漏并重复 syncAllToRemote）
         private val serviceListener = object : XposedServiceHelper.OnServiceListener {
@@ -39,6 +42,11 @@ class ConfigRepository(private val prefs: SharedPreferences) {
                 sharedService = service
                 _xposedActive.value = true
                 Dog.i(TAG, "xposed service bound")
+                _frameworkInfo.value = runCatching {
+                    "${service.frameworkVersion} (${service.frameworkVersionCode})"
+                }.onFailure { e ->
+                    Dog.e(TAG, "[:IPC Error] framework info: ${e.message}", e)
+                }.getOrNull()
                 syncAllToRemote()
             }
 
@@ -76,6 +84,8 @@ class ConfigRepository(private val prefs: SharedPreferences) {
     }
 
     val xposedActive: StateFlow<Boolean> = _xposedActive.asStateFlow()
+
+    val frameworkInfo: StateFlow<String?> = _frameworkInfo.asStateFlow()
 
     init {
         activePrefs = prefs
