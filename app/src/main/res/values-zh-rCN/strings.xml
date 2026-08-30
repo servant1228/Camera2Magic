@@ -69,6 +69,7 @@
     <string name="settings_predictive_back">预测性返回手势</string>
     <string name="settings_predictive_back_summary">启用系统级预测性返回动画</string>
     <string name="settings_density_scale">界面缩放</string>
+    <string name="settings_density_scale_summary">调整全局界面比例</string>
     <string name="settings_navigation_bar">底栏导航栏</string>
     <string name="settings_floating_bar">悬浮底栏</string>
     <string name="settings_floating_bar_summary">使用悬浮样式底部导航栏</string>

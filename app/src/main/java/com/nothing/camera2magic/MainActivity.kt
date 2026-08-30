@@ -91,7 +91,6 @@ import com.nothing.camera2magic.ui.theme.LocalAppDarkMode
 import com.nothing.camera2magic.ui.theme.LocalThemeConfig
 import com.nothing.camera2magic.ui.theme.ThemeConfig
 import com.nothing.camera2magic.ui.theme.readThemeConfig
-import com.nothing.camera2magic.ui.theme.resolveIsDark
 import com.nothing.camera2magic.ui.theme.writeThemeConfig
 import com.nothing.camera2magic.viewmodel.ConfigRepository
 import com.nothing.camera2magic.viewmodel.HomeViewModel
@@ -136,7 +135,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // 启动时启用预测性返回手势
         if (android.os.Build.VERSION.SDK_INT >= 34) {
-            val predictiveBack = prefs.getBoolean("theme_predictive_back", false)
+            val predictiveBack = prefs.getBoolean("theme_predictive_back", true)
             org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions("Landroid/content/pm/ApplicationInfo;->setEnableOnBackInvokedCallback")
             setEnableOnBackInvokedCallback(applicationInfo, predictiveBack)
         }

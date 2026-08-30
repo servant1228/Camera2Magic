@@ -262,7 +262,7 @@ fun ThemeSettingsScreen(
                     add(CardItem("densityScale") {
                         ArrowPreference(
                             title = stringResource(R.string.settings_density_scale),
-                            summary = stringResource(R.string.settings_density_scale),
+                            summary = stringResource(R.string.settings_density_scale_summary),
                             endActions = {
                                 Text(
                                     text = "${densityScaleDraft.roundToInt()}%",
@@ -384,7 +384,7 @@ private fun DensityScaleDialog(
     WindowDialog(
         show = show,
         title = stringResource(R.string.settings_density_scale),
-        summary = stringResource(R.string.settings_density_scale),
+        summary = stringResource(R.string.settings_density_scale_summary),
         onDismissRequest = onDismiss,
     ) {
         TextField(

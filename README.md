@@ -19,7 +19,7 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
   - 按应用配置照片 / 视频（本地媒体）
 - 精细化配置
   - 按应用三态控制：关闭 / 照片 / 视频（AppConfig）
-  - 手动旋转、拍照旋转修正
+  - 手动旋转
   - 播放声音、Toast、日志开关
 - 界面
   - Miuix（HyperOS 风格）Compose UI
@@ -35,7 +35,7 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 
 1. 在 LSPosed 管理器中激活本模块，并勾选作用域；
 2. 在模块的“作用域”页进入目标应用配置，开启“启用 Hook”，选择“照片/视频”并选取媒体文件；
-3. 开启模块总开关，进入目标应用即可生效（未配置媒体时不替换画面）。
+3. 进入目标应用即可生效（未配置媒体时不替换画面）。
 
 > 注意：媒体文件需要可被模块与目标应用访问；拍照替换仅对支持 JPEG/YUV 输出的相机路径生效。
 
@@ -58,7 +58,7 @@ adb logcat -s VCX:*
 ```
 
 - 使用预编译的 `libcamera3.so`（`app/src/main/jniLibs/arm64-v8a/`），原生源码不入库；
-- 输出：`CAM2Magic-2.0.0-arm64-v8a.apk`（release 签名由本地 `app/keystore.properties` 或 CI secrets 提供）。
+- 输出：`CAM2Magic-<version>-arm64-v8a.apk`（release 签名由本地 `app/keystore.properties` 或 CI secrets 提供）。
 
 ## 目录结构
 

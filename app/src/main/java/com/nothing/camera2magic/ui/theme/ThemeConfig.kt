@@ -23,7 +23,7 @@ enum class FloatingBottomBarStyle(val storageValue: String) {
 
     companion object {
         fun fromStorage(value: String): FloatingBottomBarStyle =
-            entries.firstOrNull { it.storageValue == value } ?: Miuix
+            entries.firstOrNull { it.storageValue == value } ?: IosLike
     }
 }
 
@@ -49,9 +49,9 @@ data class ThemeConfig(
     val paletteStyle: ThemePaletteStyle = ThemePaletteStyle.TonalSpot,
     val accentColor: ThemeAccentColor = ThemeAccentColor.Default,
     val blurEnabled: Boolean = true,
-    val predictiveBack: Boolean = false,
-    val floatingBottomBar: Boolean = false,
-    val floatingBottomBarStyle: FloatingBottomBarStyle = FloatingBottomBarStyle.Miuix,
+    val predictiveBack: Boolean = true,
+    val floatingBottomBar: Boolean = true,
+    val floatingBottomBarStyle: FloatingBottomBarStyle = FloatingBottomBarStyle.IosLike,
     val bottomBarMode: BottomBarMode = BottomBarMode.IconAndText,
     val densityScale: Float = DefaultDensityScale,
 )

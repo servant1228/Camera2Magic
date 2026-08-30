@@ -2,8 +2,6 @@ name: Build Release APK
 
 on:
   push:
-    branches:
-      - master
     tags:
       - 'v*'
   workflow_dispatch:
@@ -21,11 +19,11 @@ jobs:
           # 需要完整历史：versionCode = git 提交数（git rev-list --count HEAD）
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Gradle (cached)
         uses: gradle/actions/setup-gradle@v4

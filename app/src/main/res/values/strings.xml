@@ -68,6 +68,7 @@
     <string name="settings_predictive_back">Predictive Back Gesture</string>
     <string name="settings_predictive_back_summary">Enable system-level predictive back animation</string>
     <string name="settings_density_scale">UI Scale</string>
+    <string name="settings_density_scale_summary">Adjust the global interface scale</string>
     <string name="settings_navigation_bar">Navigation Bar</string>
     <string name="settings_floating_bar">Floating Bar</string>
     <string name="settings_floating_bar_summary">Use floating style bottom navigation bar</string>

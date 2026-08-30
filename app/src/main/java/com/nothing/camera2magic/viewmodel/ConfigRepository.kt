@@ -199,11 +199,11 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         set(value) = save("theme_blur", value.toString())
 
     var themeFloatingBottomBar: Boolean
-        get() = prefs.getString("theme_floating_bottom_bar", "false") == "true"
+        get() = prefs.getString("theme_floating_bottom_bar", "true") == "true"
         set(value) = save("theme_floating_bottom_bar", value.toString())
 
     var themeFloatingBottomBarStyle: String
-        get() = prefs.getString("theme_floating_bottom_bar_style", "miuix") ?: "miuix"
+        get() = prefs.getString("theme_floating_bottom_bar_style", "ios_like") ?: "ios_like"
         set(value) = save("theme_floating_bottom_bar_style", value)
 
     var themeBottomBarMode: String
@@ -215,7 +215,7 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         set(value) = save("theme_density_scale", value.toString())
 
     var themePredictiveBack: Boolean
-        get() = prefs.getBoolean("theme_predictive_back", false)
+        get() = prefs.getBoolean("theme_predictive_back", true)
         set(value) = save("theme_predictive_back", value)
 
     // Per-app config
