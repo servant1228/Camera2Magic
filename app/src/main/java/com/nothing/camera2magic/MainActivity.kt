@@ -67,7 +67,6 @@ import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.nothing.camera2magic.ui.component.AdaptiveTopAppBar
 import com.nothing.camera2magic.ui.component.BlurredBar
 import com.nothing.camera2magic.ui.component.LocalBlurEnabled
@@ -128,22 +127,19 @@ import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
 
-    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val prefs = getSharedPreferences("camera_magic_config", MODE_PRIVATE)
         enableEdgeToEdge()
         // 启动时启用预测性返回手势
-        if (android.os.Build.VERSION.SDK_INT >= 34) {
-            val predictiveBack = prefs.getBoolean("theme_predictive_back", true)
-            org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions("Landroid/content/pm/ApplicationInfo;->setEnableOnBackInvokedCallback")
-            setEnableOnBackInvokedCallback(applicationInfo, predictiveBack)
-        }
+        val predictiveBack = prefs.getBoolean("theme_predictive_back", true)
+        org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions("Landroid/content/pm/ApplicationInfo;->setEnableOnBackInvokedCallback")
+        setEnableOnBackInvokedCallback(applicationInfo, predictiveBack)
         setContent {
             val repository = remember { ConfigRepository(prefs) }
             val initialConfig = remember { readThemeConfig(repository) }
             var themeConfig by remember { mutableStateOf(initialConfig) }
-            val factory = remember { ViewModelFactory(application, repository) }
+            val factory = remember { ViewModelFactory(repository) }
             Camera2MagicTheme(themeConfig = themeConfig) {
                 CompositionLocalProvider(
                     LocalConfigRepository provides repository,
@@ -156,9 +152,7 @@ class MainActivity : ComponentActivity() {
                         themeConfig = config
                         writeThemeConfig(repository, config)
                         if (changed) {
-                            if (android.os.Build.VERSION.SDK_INT >= 34) {
-                                setEnableOnBackInvokedCallback(applicationInfo, config.predictiveBack)
-                            }
+                            setEnableOnBackInvokedCallback(applicationInfo, config.predictiveBack)
                             recreateWithoutTransition()
                         }
                     })

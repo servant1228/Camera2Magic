@@ -27,7 +27,7 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 
 ## 使用前提
 
-- Android 13+（`minSdk 33`，`targetSdk 36`）
+- Android 14+（`minSdk 34`，`targetSdk 36`）
 - 已安装并激活 LSPosed（模块要求 libxposed API 102）
 - 设备具备所选媒体对应的解码能力
 

@@ -40,30 +40,7 @@ object StatusColors {
         }
     }
 
-    @Composable @ReadOnlyComposable
-    fun actionButtonContainer(kind: ActionKind): Color {
-        val isDark = LocalAppDarkMode.current
-        return when (kind) {
-            ActionKind.Stop -> if (isDark) DarkRedBg else LightRedBg
-            else -> if (isDark) DarkGreenBg else LightGreenBg
-        }
-    }
-
-    @Composable @ReadOnlyComposable
-    fun actionButtonContent(kind: ActionKind): Color = when (kind) {
-        ActionKind.Stop -> danger
-        else -> healthy
-    }
-
-    @Composable @ReadOnlyComposable
-    fun logLevel(level: String): Color = when (level) {
-        "E" -> if (LocalAppDarkMode.current) RedDark else RedLight
-        "W" -> Orange
-        "I" -> Blue
-        else -> GreenLight
-    }
-
-    // —— 固定色谱：非 Monet 模式及警示/日志语义色不随主题漂移 ——
+    // —— 固定色谱：非 Monet 模式及警示语义色不随主题漂移 ——
     private val GreenLight = Color(0xFF4CAF50)
     private val GreenDark = Color(0xFF81C784)
     private val RedLight = Color(0xFFE53935)
@@ -72,9 +49,6 @@ object StatusColors {
     private val DarkGreenBg = Color(0xFF1A3825)
     private val LightRedBg = Color(0xFFFDE8E8)
     private val DarkRedBg = Color(0xFF3A2020)
-    private val Orange = Color(0xFFFFB74D)
-    private val Blue = Color(0xFF69C0FF)
 }
 
 enum class RunState { Running, Stopped }
-enum class ActionKind { Start, Stop, Default }

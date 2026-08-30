@@ -183,7 +183,7 @@ fun AppConfigScreen(
         val mode = pendingMediaMode ?: return@rememberLauncherForActivityResult
         pendingMediaMode = null
         if (uri == null) return@rememberLauncherForActivityResult
-        // Photo Picker 的 URI 在部分 ROM（API 33）不可持久化授权，失败不致命：媒体已被拷贝转存，URI 仅本进程内使用
+        // 部分 ROM 的 Photo Picker URI 不可持久化授权，失败不致命：媒体已被拷贝转存，URI 仅本进程内使用
         runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         when (mode) {
             MediaMode.PHOTO -> {

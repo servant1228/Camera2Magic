@@ -1,14 +1,11 @@
 package com.nothing.camera2magic.ui.component.effect
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Brush
 import top.yukonga.miuix.kmp.blur.RuntimeShader
 import top.yukonga.miuix.kmp.blur.asBrush
 import kotlin.math.cos
 import kotlin.math.sin
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal class BgEffectPainter {
 
     val runtimeShader by lazy {

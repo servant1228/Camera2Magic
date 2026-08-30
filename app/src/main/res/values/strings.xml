@@ -1,9 +1,6 @@
 <resources>
     <string name="app_name">Camera2 Magic</string>
-    <string name="app_description">A Virtual Camera, support Android 13+</string>
-    <string name="permission_rationale_title">Media Access Required</string>
-    <string name="permission_rationale_description">To load your selected videos and images for the virtual camera, the app needs permission to access media files on your device.</string>
-    <string name="grant_permission_button_name">Grant Permission</string>
+    <string name="app_description">A Virtual Camera, support Android 14+</string>
     <string name="home_device_model">Model</string>
     <string name="home_device_system">System</string>
     <string name="home_device_lsposed">LSPosed</string>
@@ -20,19 +17,8 @@
     <string name="quick_entry_enable_log">Enable Log</string>
     <string name="quick_entry_inject_menu">Inject Menu</string>
     <string name="quick_entry_manually_rotate">Rotate Frame</string>
-    <string name="quick_entry_enabled">Enabled</string>
-    <string name="quick_entry_disabled">Disabled</string>
     <string name="home_scope_apps">Scope Apps</string>
     <string name="home_no_scope_apps">No scope apps</string>
-    <string name="home_version_info">Version Info</string>
-    <string name="home_version">Version</string>
-    <string name="home_min_support">Min Support</string>
-    <string name="home_min_support_value">Android 13</string>
-    <string name="home_hook_framework">Hook Framework</string>
-    <string name="home_hook_framework_value">LSPosed</string>
-    <string name="work_mode_normal">Normal</string>
-    <string name="work_mode_scan_qr_code">Scan QR Code</string>
-    <string name="work_mode_face_recognition">Face Recognition</string>
     <string name="settings_color_theme">Color &amp; Theme</string>
     <string name="settings_theme_mode">Theme Mode</string>
     <string name="settings_theme_system">Follow System</string>
@@ -79,7 +65,6 @@
     <string name="settings_bar_icon_text">Icon &amp; Text</string>
     <string name="settings_bar_icon_only">Icon Only</string>
     <string name="settings_general">General</string>
-    <string name="settings_quick_settings">Quick Settings</string>
     <string name="settings_appearance_theme">Appearance &amp; Theme</string>
     <string name="settings_appearance_theme_summary">Color mode, palette, interface scale and bottom bar style</string>
     <string name="quick_entry_play_sound_summary">Play audio for the selected media</string>
@@ -87,12 +72,8 @@
     <string name="quick_entry_inject_menu_summary">Inject menu into camera app</string>
     <string name="quick_entry_manually_rotate_summary">Override camera frame rotation</string>
     <string name="common_back">Back</string>
-    <string name="scope_select_all">Select All</string>
-    <string name="scope_deselect_all">Deselect All</string>
-    <string name="scope_invert_selection">Invert Selection</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_confirm">Confirm</string>
-    <string name="common_not_modified">Do not modify</string>
     <string name="common_no_matching_apps">No matching apps</string>
     <string name="common_refresh_release">Release to refresh</string>
     <string name="common_refresh_refreshing">Refreshing...</string>

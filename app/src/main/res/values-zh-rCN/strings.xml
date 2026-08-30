@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Camera2 Magic</string>
-    <string name="app_description">一个虚拟摄像头，支持 Android 13+</string>
-    <string name="permission_rationale_title">需要媒体权限</string>
-    <string name="permission_rationale_description">为了加载您的视频和图片作为虚拟摄像头内容，应用需要访问您设备上的媒体文件。</string>
-    <string name="grant_permission_button_name">授予权限</string>
+    <string name="app_description">一个虚拟摄像头，支持 Android 14+</string>
     <string name="home_device_model">机型</string>
     <string name="home_device_system">系统</string>
     <string name="home_device_lsposed">LSPosed</string>
@@ -21,19 +18,8 @@
     <string name="quick_entry_enable_log">启用日志</string>
     <string name="quick_entry_inject_menu">注入菜单</string>
     <string name="quick_entry_manually_rotate">旋转画面</string>
-    <string name="quick_entry_enabled">已开启</string>
-    <string name="quick_entry_disabled">已关闭</string>
     <string name="home_scope_apps">作用域应用</string>
     <string name="home_no_scope_apps">无作用域应用</string>
-    <string name="home_version_info">版本信息</string>
-    <string name="home_version">版本</string>
-    <string name="home_min_support">最低支持</string>
-    <string name="home_min_support_value">Android 13</string>
-    <string name="home_hook_framework">Hook 框架</string>
-    <string name="home_hook_framework_value">LSPosed</string>
-    <string name="work_mode_normal">拍照</string>
-    <string name="work_mode_scan_qr_code">扫描二维码</string>
-    <string name="work_mode_face_recognition">人脸识别</string>
     <string name="settings_color_theme">颜色与主题</string>
     <string name="settings_theme_mode">主题模式</string>
     <string name="settings_theme_system">跟随系统</string>
@@ -80,7 +66,6 @@
     <string name="settings_bar_icon_text">图标和文字</string>
     <string name="settings_bar_icon_only">仅图标</string>
     <string name="settings_general">通用</string>
-    <string name="settings_quick_settings">快捷设置</string>
     <string name="settings_appearance_theme">外观与主题</string>
     <string name="settings_appearance_theme_summary">深浅色、取色、界面缩放与底栏样式</string>
     <string name="quick_entry_play_sound_summary">允许选中的媒体播放音频</string>
@@ -88,12 +73,8 @@
     <string name="quick_entry_inject_menu_summary">向目标应用注入菜单</string>
     <string name="quick_entry_manually_rotate_summary">覆盖相机旋转画面</string>
     <string name="common_back">返回</string>
-    <string name="scope_select_all">全选</string>
-    <string name="scope_deselect_all">取消全选</string>
-    <string name="scope_invert_selection">反选</string>
     <string name="common_cancel">取消</string>
     <string name="common_confirm">确认</string>
-    <string name="common_not_modified">不修改</string>
     <string name="common_no_matching_apps">未找到匹配应用</string>
     <string name="common_refresh_release">松手刷新</string>
     <string name="common_refresh_refreshing">刷新中...</string>

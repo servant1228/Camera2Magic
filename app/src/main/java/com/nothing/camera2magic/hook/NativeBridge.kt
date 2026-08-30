@@ -9,7 +9,6 @@ import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 
 object NativeBridge {
-    private const val TAG = "[Bridge]"
     @Volatile
     private var cachedBuffer: ByteArray? = null
     @Volatile

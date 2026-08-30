@@ -35,10 +35,8 @@ val blurActive = backdrop != null
 
 嵌套 layerBackdrop 合法（AboutScreen 的 hero 内层就是）。新页面漏掉 `layerBackdrop` 的症状：毛玻璃开着但顶栏底下是实色。搜索页在 BlurredBar 位置套 `searchStatus.TopAppBarAnim(backgroundColor = 同 bar 色)`，见 ScopeScreen。
 
-## 宽屏与缺口
+## 缺口
 
-- 阈值常量只有两个，都在 [WindowSize.kt](../app/src/main/java/com/nothing/camera2magic/ui/util/WindowSize.kt)：外壳 `WideScreenMinWidth=600`、内容 `MaxContentWidth=800`。**是否宽屏只认 `rememberIsWideScreen()`**，独立再写一遍比较必然漂移。
-- 内容居中用 `WideContentBox { sidePadding -> ... }`；**LazyColumn 保持全宽**，把 `sidePadding` 加进 `contentPadding` 限宽，而不是压缩 LazyColumn 节点宽度——后者两侧出现滚动死区。
 - **横屏缺口**：Miuix Scaffold 不自动 padding 内容，每个二级页根 LazyColumn 在 `.fillMaxSize()` 后加 `Modifier.horizontalCutoutPadding()`（只补水平 `displayCutout ∪ navigationBars`，竖屏为 0）；顶栏由自身 inset 处理。主 Tab 内容居中在缺口内侧，无需此项。
 - 搜索框动态 top padding 宽屏恒为 0。
 
@@ -73,7 +71,7 @@ groupedCardItems("scope", items = listOf(
 
 ## 颜色 token
 
-状态/操作/日志色统一走 [StatusColors](../app/src/main/java/com/nothing/camera2magic/ui/theme/StatusColors.kt)（`healthy`/`danger`/`runState`/`runStateContainer`/`actionButtonContainer`/`actionButtonContent`/`logLevel`）。**禁止屏幕里散落 `Color(0xFF...)`**；合法颜色源仅 `MiuixTheme.colorScheme.*` 与 `StatusColors`（后者内部的固定色谱是唯一字面量处——警示语义刻意不随 Monet 壁纸漂移，别「顺手」改成动态色）。深色判定读 `LocalAppDarkMode.current`，禁止 `isSystemInDarkTheme()`（见 AGENTS.md 深色判定单点）。
+状态色统一走 [StatusColors](../app/src/main/java/com/nothing/camera2magic/ui/theme/StatusColors.kt)（`healthy`/`danger`/`runState`/`runStateContainer`）。**禁止屏幕里散落 `Color(0xFF...)`**；合法颜色源仅 `MiuixTheme.colorScheme.*` 与 `StatusColors`（后者内部的固定色谱是唯一字面量处——警示语义刻意不随 Monet 壁纸漂移，别「顺手」改成动态色）。深色判定读 `LocalAppDarkMode.current`，禁止 `isSystemInDarkTheme()`（见 AGENTS.md 深色判定单点）。
 
 ## 数据与动画纪律
 

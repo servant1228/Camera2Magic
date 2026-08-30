@@ -1,6 +1,5 @@
 package com.nothing.camera2magic.viewmodel
 
-import android.app.Application
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,7 +21,6 @@ data class HomeUiState(
 )
 
 class HomeViewModel(
-    private val app: Application,
     private val repository: ConfigRepository,
 ) : ViewModel() {
 
