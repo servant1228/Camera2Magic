@@ -127,14 +127,10 @@ fun ThemeSettingsScreen(
     val accentItems = accentOptions.map { it.label() }
     val selectedAccentIndex = accentOptions.indexOf(themeConfig.accentColor).coerceAtLeast(0)
     val floatingBottomBarStyles = FloatingBottomBarStyle.entries.toList()
-    val floatingBottomBarStyleItems = floatingBottomBarStyles.map {
-        when (it) { FloatingBottomBarStyle.Miuix -> "Miuix"; FloatingBottomBarStyle.IosLike -> "iOS 风格" }
-    }
+    val floatingBottomBarStyleItems = floatingBottomBarStyles.map { it.label() }
     val selectedFloatingBottomBarStyleIndex = floatingBottomBarStyles.indexOf(themeConfig.floatingBottomBarStyle).coerceAtLeast(0)
     val bottomBarModes = BottomBarMode.entries.toList()
-    val bottomBarModeItems = bottomBarModes.map {
-        when (it) { BottomBarMode.IconAndText -> stringResource(R.string.settings_bar_icon_text); BottomBarMode.IconOnly -> stringResource(R.string.settings_bar_icon_only) }
-    }
+    val bottomBarModeItems = bottomBarModes.map { it.label() }
     val selectedBottomBarModeIndex = bottomBarModes.indexOf(themeConfig.bottomBarMode).coerceAtLeast(0)
     val isBlurSupported = isRuntimeShaderSupported()
 

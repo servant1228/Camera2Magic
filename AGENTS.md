@@ -109,4 +109,4 @@ MainActivity → CompositionLocal         MagicHook.onPackageReady(isFirstPackag
 - ABI split 只产 arm64-v8a，输出名 `CAM2Magic-<version>-arm64-v8a.apk`（androidComponents 重命名）。
 - release 签名优先级：CI secrets（`CAM2MAGIC_KEYSTORE_B64` + `CAM2MAGIC_KEYSTORE_PASSWORD`/`CAM2MAGIC_KEY_ALIAS`/`CAM2MAGIC_KEY_PASSWORD`）> `CAM2MAGIC_KEYSTORE` 路径 > 本地 `app/keystore.properties`；都没有则产出未签名 APK 并打警告。minify + shrinkResources 开着，见上文 proguard 约束。
 - **配置缓存必须保持关闭**（gradle.properties 已注明）：versionCode 在配置阶段执行 `git rev-list --count HEAD`，开缓存后该值被固化、不再随提交递增。同理 CI checkout 必须 `fetch-depth: 0`。
-- **CI 不跑 buildNative**（[build-release.yml](.github/workflows/build-release.yml)，push master / `v*` tag / 手动触发）：正式发布流程 = 本机 `buildNative` 更新 jniLibs 产物 → 提交推送 master → CI 出签名包。`.so` 是提交进仓库的构建产物，这点与常规直觉相反，是有意的（源码不入库）。
+- **CI 不跑 buildNative**（[build-release.yml](.github/workflows/build-release.yml)，**仅 `v*` tag 与手动触发，push master 不触发**）：正式发布流程 = 本机 `buildNative` 更新 jniLibs 产物 → 提交推送 master → 打 `v*` tag 推送（或手动 workflow_dispatch）→ CI 出签名包。`.so` 是提交进仓库的构建产物，这点与常规直觉相反，是有意的（源码不入库）。

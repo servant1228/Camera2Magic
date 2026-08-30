@@ -214,9 +214,19 @@ fun ScopeScreen(
                 isRefreshing = uiState.isRefreshing,
                 pullToRefreshState = pullToRefreshState,
                 onRefresh = { homeViewModel.refreshScopeList() },
-                refreshTexts = listOf("", "松手刷新", "刷新中...", "刷新完成"),
+                // index 0 保持空串：miuix 仅在 visualProgress > 0.5 时显示它，
+                // 这里刻意让文案只在越过触发阈值后出现（有可操作性时才给提示）。
+                refreshTexts = listOf(
+                    "",
+                    stringResource(R.string.common_refresh_release),
+                    stringResource(R.string.common_refresh_refreshing),
+                    stringResource(R.string.common_refresh_complete),
+                ),
                 contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
+                    // +7dp 是对称化偏移：miuix header 高度写死 circleSize + 36dp，CJK 文案实际只占 26.3dp，
+                    // 余下约 9.7dp 死区连同下方 12dp Spacer 全压在文字底部，导致上 8dp / 下 21.7dp。
+                    // 该值只进 header 的 offset（不改 Column 排布），故卡片不动、空闲态 header 高度为 0 时零影响。
+                    top = innerPadding.calculateTopPadding() + 7.dp,
                     start = innerPadding.calculateStartPadding(layoutDirection),
                     end = innerPadding.calculateEndPadding(layoutDirection),
                 ),

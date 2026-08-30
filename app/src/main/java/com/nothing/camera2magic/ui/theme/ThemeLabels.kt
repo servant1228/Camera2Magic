@@ -34,3 +34,19 @@ fun ThemeAccentColor.label(): String = stringResource(
         ThemeAccentColor.Teal -> R.string.settings_theme_accent_teal
     },
 )
+
+@Composable
+fun FloatingBottomBarStyle.label(): String = stringResource(
+    when (this) {
+        FloatingBottomBarStyle.Miuix -> R.string.settings_bar_style_miuix
+        FloatingBottomBarStyle.IosLike -> R.string.settings_bar_style_ios_like
+    },
+)
+
+@Composable
+fun BottomBarMode.label(): String = stringResource(
+    when (this) {
+        BottomBarMode.IconAndText -> R.string.settings_bar_icon_text
+        BottomBarMode.IconOnly -> R.string.settings_bar_icon_only
+    },
+)

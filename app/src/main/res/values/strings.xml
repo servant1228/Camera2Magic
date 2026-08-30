@@ -73,6 +73,8 @@
     <string name="settings_floating_bar">Floating Bar</string>
     <string name="settings_floating_bar_summary">Use floating style bottom navigation bar</string>
     <string name="settings_floating_bar_style">Floating Bar Style</string>
+    <string name="settings_bar_style_miuix">Miuix</string>
+    <string name="settings_bar_style_ios_like">iOS Style</string>
     <string name="settings_bar_mode">Bar Mode</string>
     <string name="settings_bar_icon_text">Icon &amp; Text</string>
     <string name="settings_bar_icon_only">Icon Only</string>
@@ -92,6 +94,9 @@
     <string name="common_confirm">Confirm</string>
     <string name="common_not_modified">Do not modify</string>
     <string name="common_no_matching_apps">No matching apps</string>
+    <string name="common_refresh_release">Release to refresh</string>
+    <string name="common_refresh_refreshing">Refreshing...</string>
+    <string name="common_refresh_complete">Refreshed</string>
     <string name="quick_entry_show_toast">Show Toast</string>
     <string name="quick_entry_show_toast_summary">Show a toast notification when the target app opens</string>
     <string name="app_config_title">App Config</string>

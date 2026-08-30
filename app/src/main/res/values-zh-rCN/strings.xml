@@ -74,6 +74,8 @@
     <string name="settings_floating_bar">悬浮底栏</string>
     <string name="settings_floating_bar_summary">使用悬浮样式底部导航栏</string>
     <string name="settings_floating_bar_style">底栏样式</string>
+    <string name="settings_bar_style_miuix">Miuix</string>
+    <string name="settings_bar_style_ios_like">iOS 风格</string>
     <string name="settings_bar_mode">底栏模式</string>
     <string name="settings_bar_icon_text">图标和文字</string>
     <string name="settings_bar_icon_only">仅图标</string>
@@ -93,6 +95,9 @@
     <string name="common_confirm">确认</string>
     <string name="common_not_modified">不修改</string>
     <string name="common_no_matching_apps">未找到匹配应用</string>
+    <string name="common_refresh_release">松手刷新</string>
+    <string name="common_refresh_refreshing">刷新中...</string>
+    <string name="common_refresh_complete">刷新完成</string>
     <string name="quick_entry_show_toast">启用Toast通知</string>
     <string name="quick_entry_show_toast_summary">在目标应用打开时显示通知</string>
     <string name="app_config_title">应用配置</string>
