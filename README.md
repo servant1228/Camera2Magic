@@ -25,14 +25,11 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
   - Miuix（HyperOS 风格）Compose UI
   - 多主题：深色 / 纯黑 / Monet 动态取色 / 自定义强调色 / 模糊效果等
 
-> 首页的「Hook 模式（Camera1/Camera2/Camera3）」选择器目前**尚未接入 Hook 侧**：四条路径始终全部启用，该选项只保存在宿主设置里。
-
 ## 使用前提
 
 - Android 14+（`minSdk 34`，`targetSdk 36`）
 - 已安装并激活 LSPosed（模块要求 libxposed API 102）
 - 设备具备所选媒体对应的解码能力
-- **可选（仅影响应用配置页的「强制停止 / 重启应用」两个动作）**：设备已 root 且授予本应用 su 权限。无 root 时这两个动作会明确提示失败，其余功能不受影响。
 
 ## 使用步骤
 
@@ -48,39 +45,6 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 
 ```bash
 adb logcat -s VCX:*
-```
-
-> 应用内不再提供日志页；查看目标应用（Hook 进程）的日志同样通过 adb 完成。
->
-> 注意：Hook 进程里少数关键路径（Hook 装配失败、图片替换失败等）会**无视该开关**照常输出，方便无配置直接排障。
-
-## 构建
-
-### 常规构建
-
-```powershell
-.\gradlew.bat assembleRelease          # 出包（release 签名）
-.\gradlew.bat assembleDebug            # 调试包
-.\gradlew.bat :app:compileDebugKotlin  # 最快的语法/类型检查
-.\gradlew.bat :app:testDebugUnitTest   # 单元测试
-```
-
-- Windows 上必须用 `.\gradlew.bat`：仓库里的 `gradlew` 是 LF 脚本、在 PowerShell 下无法直接执行（CI 的 Linux 环境才用 `./gradlew`）；
-- 使用预编译的 `libcamera3.so`（`app/src/main/jniLibs/arm64-v8a/`），原生源码不入库；`buildNative` 任务仅在本机存在 `app/src/main/cpp/` 时才注册；
-- 输出：`CAM2Magic-<version>-arm64-v8a.apk`（release 签名由本地 `app/keystore.properties` 或 CI secrets 提供）。
-
-## 目录结构
-
-```text
-app/
-├── src/main/java/com/nothing/camera2magic/
-│   ├── MagicHook.kt            # Xposed 入口
-│   ├── hook/                   # Hook 引擎（Camera1/Camera2/ImageReader/WebRTC/渲染端）
-│   ├── ui/                     # Compose UI（Miuix）
-│   └── viewmodel/              # 配置仓库与 ViewModel
-├── src/test/                   # 单元测试（纯 JVM，不依赖 Android framework）
-├── src/main/jniLibs/           # 预编译原生库 libcamera3.so（闭源，源码不入库）
-└── src/main/resources/META-INF/xposed/   # module.prop / scope.list 等
 ```
 
 ## 声明
