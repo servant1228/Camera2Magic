@@ -178,8 +178,7 @@ fun ScopeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .scrollEndHaptic()
-                        .overScrollVertical()
-                        .navigationBarsPadding(),
+                        .overScrollVertical(),
                 ) {
                     item { Spacer(Modifier.height(12.dp)) }
                     if (filtered.isEmpty()) {

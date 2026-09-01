@@ -80,7 +80,6 @@ import com.nothing.camera2magic.ui.screen.scope.ScopeScreen
 import com.nothing.camera2magic.ui.screen.scope.AppConfigScreen
 import com.nothing.camera2magic.ui.component.liquid.IosLiquidGlassNavigationBar
 import com.nothing.camera2magic.ui.screen.settings.AboutScreen
-import com.nothing.camera2magic.ui.screen.settings.SettingsPage
 import com.nothing.camera2magic.ui.screen.settings.SettingsScreenContent
 import com.nothing.camera2magic.ui.screen.settings.ThemeSettingsScreen
 import com.nothing.camera2magic.ui.theme.BottomBarMode

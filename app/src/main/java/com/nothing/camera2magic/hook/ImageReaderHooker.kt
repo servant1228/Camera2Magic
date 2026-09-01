@@ -19,7 +19,9 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
     companion object {
         private const val TAG = "[ImageReader]"
         private const val IMAGE_READER_CLASS = "android.media.ImageReader"
-        // Cache: key = "file_w_h" -> ByteArray
+        // 单条缓存：key = "file_size_mtime_W_H" -> ByteArray。
+        // 带上 size/mtime 是为了媒体重新上传后不命中旧缓存；fstat 失败会退化成
+        // "file_null_null_W_H"，同名换图有误命中风险。只存一条，交替分辨率会反复失效。
         @Volatile
         private var cachedJpegKey: String? = null
         @Volatile
@@ -32,9 +34,9 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
     }
 
     init {
-        val classLoader = param.classLoader
-        val irClass = classLoader.loadClass(IMAGE_READER_CLASS)
-        irClass.safeHook {
+        // 铁律3：静态类走 classLoader.safeHook，类不存在只记警告；
+        // 直接 loadClass 会把异常抛回 onPackageReady，连带拖挂其余 Hooker 的装配。
+        param.classLoader.safeHook(IMAGE_READER_CLASS) {
             newInstance4Hook()
             newInstance5Hook()
             acquireNextImageHook()
@@ -44,14 +46,17 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
     }
 
     private fun handleImage(image: Image): Image {
+        // 铁律1：替换路径先判门控，未启用直接返回原图
+        if (!SM.readyForHook) return image
+
         val format = image.format
-        Dog.w(TAG, "HOOK: handleImage format=$format", true)
+        Dog.i(TAG, "handleImage format=$format", SM.enableLog)
 
         if (format == 256) {
-            Dog.w(TAG, "app wanna take a picture.")
+            Dog.i(TAG, "app wanna take a picture.", SM.enableLog)
             val validMedia = SM.validMedia
             if (validMedia == null) {
-                Dog.e(TAG, "No valid media set, returning original image", null, true)
+                Dog.i(TAG, "No valid media set, returning original image", SM.enableLog)
                 return image
             }
             val buffer = image.planes[0].buffer
@@ -212,7 +217,9 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
             return image
         }
 
-        if (format == 35) handleFormat35(image)
+        // 与 format 256 保持一致：无有效媒体时不替换画面，
+        // 否则原生引擎没有帧源，会把 App 的 YUV 分析面覆写成黑帧/陈旧帧
+        if (format == 35 && SM.validMedia != null) handleFormat35(image)
 
         return image
     }
@@ -240,7 +247,6 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
     private fun Class<*>.acquireNextImageHook() {
         val acquireNextImage = getDeclaredMethod("acquireNextImage")
         magic.hook(acquireNextImage).intercept { chain ->
-            Dog.w(TAG, "HOOK: acquireNextImage called", true)
             val image = chain.proceed() as? Image ?: return@intercept null
             runCatching { handleImage(image) }
                 .onFailure { Dog.e(TAG, "handleImage failed: ${it.message}", it, true) }
@@ -251,7 +257,6 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
     private fun Class<*>.acquireLatestImageHook() {
         val acquireLatestImage = getDeclaredMethod("acquireLatestImage")
         magic.hook(acquireLatestImage).intercept { chain ->
-            Dog.w(TAG, "HOOK: acquireLatestImage called", true)
             val image = chain.proceed() as? Image ?: return@intercept null
             runCatching { handleImage(image) }
                 .onFailure { Dog.e(TAG, "handleImage failed: ${it.message}", it, true) }
@@ -262,7 +267,6 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
     private fun Class<*>.acquireNextImageNoThrowISEHook() {
         val acquireNextImageNoThrowISE = getDeclaredMethod("acquireNextImageNoThrowISE")
         magic.hook(acquireNextImageNoThrowISE).intercept { chain ->
-            Dog.w(TAG, "HOOK: acquireNextImageNoThrowISE called", true)
             val image = chain.proceed() as? Image ?: return@intercept null
             runCatching { handleImage(image) }
                 .onFailure { Dog.e(TAG, "handleImage failed: ${it.message}", it, true) }

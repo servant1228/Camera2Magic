@@ -18,18 +18,21 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 - 媒体源
   - 按应用配置照片 / 视频（本地媒体）
 - 精细化配置
-  - 按应用三态控制：关闭 / 照片 / 视频（AppConfig）
+  - 按应用独立开关「启用 Hook」+ 媒体类型二选一（照片 / 视频）；不选媒体即不替换画面
   - 手动旋转
   - 播放声音、Toast、日志开关
 - 界面
   - Miuix（HyperOS 风格）Compose UI
   - 多主题：深色 / 纯黑 / Monet 动态取色 / 自定义强调色 / 模糊效果等
 
+> 首页的「Hook 模式（Camera1/Camera2/Camera3）」选择器目前**尚未接入 Hook 侧**：四条路径始终全部启用，该选项只保存在宿主设置里。
+
 ## 使用前提
 
 - Android 14+（`minSdk 34`，`targetSdk 36`）
 - 已安装并激活 LSPosed（模块要求 libxposed API 102）
 - 设备具备所选媒体对应的解码能力
+- **可选（仅影响应用配置页的「强制停止 / 重启应用」两个动作）**：设备已 root 且授予本应用 su 权限。无 root 时这两个动作会明确提示失败，其余功能不受影响。
 
 ## 使用步骤
 
@@ -37,27 +40,33 @@ Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在
 2. 在模块的“作用域”页进入目标应用配置，开启“启用 Hook”，选择“照片/视频”并选取媒体文件；
 3. 进入目标应用即可生效（未配置媒体时不替换画面）。
 
-> 注意：媒体文件需要可被模块与目标应用访问；拍照替换仅对支持 JPEG/YUV 输出的相机路径生效。
+> 注意：媒体经系统相册选择器选取后会被拷贝进模块私有目录（本模块不申请任何存储权限）；拍照替换仅对支持 JPEG/YUV 输出的相机路径生效。
 
 ## 查看日志
 
-先开启「启用日志」，然后通过 logcat 查看（tag 为 `VCX`）：
+开启「启用日志」，然后通过 logcat 查看（tag 为 `VCX`）：
 
 ```bash
 adb logcat -s VCX:*
 ```
 
 > 应用内不再提供日志页；查看目标应用（Hook 进程）的日志同样通过 adb 完成。
+>
+> 注意：Hook 进程里少数关键路径（Hook 装配失败、图片替换失败等）会**无视该开关**照常输出，方便无配置直接排障。
 
 ## 构建
 
 ### 常规构建
 
 ```powershell
-.\gradlew.bat assembleRelease
+.\gradlew.bat assembleRelease          # 出包（release 签名）
+.\gradlew.bat assembleDebug            # 调试包
+.\gradlew.bat :app:compileDebugKotlin  # 最快的语法/类型检查
+.\gradlew.bat :app:testDebugUnitTest   # 单元测试
 ```
 
-- 使用预编译的 `libcamera3.so`（`app/src/main/jniLibs/arm64-v8a/`），原生源码不入库；
+- Windows 上必须用 `.\gradlew.bat`：仓库里的 `gradlew` 是 LF 脚本、在 PowerShell 下无法直接执行（CI 的 Linux 环境才用 `./gradlew`）；
+- 使用预编译的 `libcamera3.so`（`app/src/main/jniLibs/arm64-v8a/`），原生源码不入库；`buildNative` 任务仅在本机存在 `app/src/main/cpp/` 时才注册；
 - 输出：`CAM2Magic-<version>-arm64-v8a.apk`（release 签名由本地 `app/keystore.properties` 或 CI secrets 提供）。
 
 ## 目录结构
@@ -69,6 +78,7 @@ app/
 │   ├── hook/                   # Hook 引擎（Camera1/Camera2/ImageReader/WebRTC/渲染端）
 │   ├── ui/                     # Compose UI（Miuix）
 │   └── viewmodel/              # 配置仓库与 ViewModel
+├── src/test/                   # 单元测试（纯 JVM，不依赖 Android framework）
 ├── src/main/jniLibs/           # 预编译原生库 libcamera3.so（闭源，源码不入库）
 └── src/main/resources/META-INF/xposed/   # module.prop / scope.list 等
 ```

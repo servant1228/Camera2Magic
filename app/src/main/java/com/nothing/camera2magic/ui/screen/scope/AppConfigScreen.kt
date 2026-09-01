@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.nothing.camera2magic.R
+import com.nothing.camera2magic.ui.component.AdaptiveTopAppBar
 import com.nothing.camera2magic.ui.component.BlurredBar
 import com.nothing.camera2magic.ui.component.CardSegment
 import com.nothing.camera2magic.ui.component.ListPopupDefaults
@@ -81,7 +82,6 @@ import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -506,8 +506,8 @@ private fun TopBar(
     backdrop: LayerBackdrop?,
     barColor: Color,
 ) {
-    BlurredBar(backdrop) {
-        TopAppBar(
+    BlurredBar(backdrop = backdrop, blurActive = backdrop != null) {
+        AdaptiveTopAppBar(
             color = barColor,
             title = stringResource(R.string.app_config_title),
             navigationIcon = {
