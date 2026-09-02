@@ -39,7 +39,7 @@ app/src/main/resources/META-INF/xposed/   # module.prop / java_init.list / nativ
 app/src/main/jniLibs/arm64-v8a/libcamera3.so   # 预编译闭源产物（需提交进仓库）
 ```
 
-`Route` 有 4 个成员，但 `Route.Main` 内部是 3 个 tab 页的 pager，所以实际是 6 个页面。各 Hooker 的职责能从文件名读出，但**装配点不在 `HookManager`**——那是只提供 `safeHook`/`hookedClasses` 的 mixin 接口，真正 new 四个 Hooker 的地方是 `MagicHook.onPackageReady`。
+`Route` 有 5 个成员，但 `Route.Main` 内部是 3 个 tab 页的 pager，所以实际是 7 个页面。各 Hooker 的职责能从文件名读出，但**装配点不在 `HookManager`**——那是只提供 `safeHook`/`hookedClasses` 的 mixin 接口，真正 new 四个 Hooker 的地方是 `MagicHook.onPackageReady`。
 
 `scope.list` 为空是有意的（`module.prop` 里 `staticScope=false`，作用域由模块内 UI 动态管理），不要往里加应用。`module.prop` 里**没有 name/description/version**，所以 LSPosed 展示的是 APK 的 label 与 `AndroidManifest` 的 `android:description`——改文案要改 manifest 指向的字符串，不是 module.prop。
 

@@ -2,7 +2,7 @@
 
 Compose / Miuix 相关的全部约定与踩坑约束。改 `app/src/main/java/com/nothing/camera2magic/ui/` 下任何文件之前先读本文件；其余架构约束在仓库根的 [AGENTS.md](../AGENTS.md)。
 
-页面清单（现存全部 6 个，`MainActivity` 是主骨架）：**主 Tab** = `HomePage` / `ScopePage`→`ScopeScreen` / `SettingsScreenContent`（经底栏 pager 切换）；**二级页** = `ThemeSettingsScreen` / `AboutScreen` / `AppConfigScreen`（经 Navigator push）。`ThemeSettingsScreen` 是骨架、Dialog、卡片圆角三方面最贴合本规范的参照实现，改前先看它。
+页面清单（现存全部 7 个，`MainActivity` 是主骨架）：**主 Tab** = `HomePage` / `ScopePage`→`ScopeScreen` / `SettingsScreenContent`（经底栏 pager 切换）；**二级页** = `ThemeSettingsScreen` / `AboutScreen` / `LicensesScreen` / `AppConfigScreen`（经 Navigator push）。`ThemeSettingsScreen` 是骨架、Dialog、卡片圆角三方面最贴合本规范的参照实现，改前先看它；`LicensesScreen` 是「二级页 + `groupedCardItems`」的最小参照实现（`AboutScreen` push 进来的三级深度）。
 
 本文件区分两种句式：**「必须/禁止」= 现有代码已全面遵守的约束**；**「已知偏差」= 代码尚未收敛、但不要跟着抄的地方**。凡是本文件里出现的 API 名都在当前代码里有真实调用点——写不出对应实现的处方一律不写。
 
@@ -14,8 +14,8 @@ Compose / Miuix 相关的全部约定与踩坑约束。改 `app/src/main/java/co
   - 只需要纯色背景 → 直接 `Modifier.background(color)`（无 offscreen 最省），配合 miuix 组件自身的 `cornerRadius` 参数。
   - 当前真实用点只有两处：`AppConfigScreen` 的 `popupModifier = Modifier.squircleClip(...)`，与 `GroupedCardItems.CardSegment` 的首/末段 `squircleSurface`。
 - **药丸 / 圆形是明确豁免**：`CircleShape` 没有 squircle 对应物，因此搜索框（`SearchBar`）与 iOS 悬浮底栏（`LiquidGlassNavigationBar`）的 `clip`/`background` 用 `CircleShape` 是正确写法，不要按上一条去「修」。`MainActivity` 自建的 `SquirclePillShape`（基于 `addSquircleRect`）同理，它只作为 `textureBlur(shape = ...)` 的入参。
-- **`RoundedCornerShape` 的唯一残留是参数豁免**：`AboutScreen` 有 3 处，全部作为 miuix blur API 的 `textureBlur(shape = ...)` 入参（不是手搓 clip/background）。其中两处毛玻璃卡传的是 `rememberConcentricCardRadius()` 的结果，logo 那处写死 16dp。待 miuix-blur 暴露 squircle Shape 后再迁移；新增 clip/background 零容忍。
-- **卡片圆角同心跟随系统屏幕圆角**：一律用 [rememberConcentricCardRadius](../app/src/main/java/com/nothing/camera2magic/ui/component/ConcentricRadius.kt)（`(rememberNavSystemCornerRadius() - inset).coerceAtLeast(CardDefaults.CornerRadius)`，`inset` 是**参数默认值** 12.dp，全部 12 个调用点都用默认值）。下限是 `CardDefaults.CornerRadius` = 16dp，**所以系统圆角 ≤ 28dp 的设备实际恒为 16dp**、同心效果不生效，直屏（radius 0）同样回落 16dp。现存 9 个 `Card(` 调用点全部传了 `cornerRadius`，零硬编码 16dp——新增卡片照做。
+- **`RoundedCornerShape` 的唯一残留是参数豁免**：`AboutScreen` 有 2 处，全部作为 miuix blur API 的 `textureBlur(shape = ...)` 入参（不是手搓 clip/background）。其中毛玻璃卡传的是 `rememberConcentricCardRadius()` 的结果，logo 那处写死 16dp。待 miuix-blur 暴露 squircle Shape 后再迁移；新增 clip/background 零容忍。
+- **卡片圆角同心跟随系统屏幕圆角**：一律用 [rememberConcentricCardRadius](../app/src/main/java/com/nothing/camera2magic/ui/component/ConcentricRadius.kt)（`(rememberNavSystemCornerRadius() - inset).coerceAtLeast(CardDefaults.CornerRadius)`，`inset` 是**参数默认值** 12.dp，全部调用点都用默认值）。下限是 `CardDefaults.CornerRadius` = 16dp，**所以系统圆角 ≤ 28dp 的设备实际恒为 16dp**、同心效果不生效，直屏（radius 0）同样回落 16dp。现存 8 个 `Card(` 调用点全部传了 `cornerRadius`，零硬编码 16dp——新增卡片照做。
 - **`CardSegment` 默认已接入**（`cornerRadius: Dp? = null` → `?: rememberConcentricCardRadius()`），显式传参可覆盖；另有 `topCornerRadius`/`bottomCornerRadius` 可单独覆盖上下两端。
 - **弹出菜单圆角**：库内 `ListPopupContent` 写死 16dp 且未透出参数。裸用 `OverlayListPopup` 时以 `popupModifier = Modifier.squircleClip(rememberConcentricCardRadius())` 外层裁剪补齐（`AppConfigScreen` 的应用菜单即是）；miuix 的 `OverlayDropdownPreference`（6 处）/ `OverlaySpinnerPreference`（1 处）无注入点，暂保持库默认 16dp——**不要本地复刻偏好组件**，等上游透出圆角参数后统一替换。
 
@@ -46,7 +46,7 @@ val blurActive = backdrop != null
 
 - `rememberBlurBackdrop()` 的门控是 `LocalBlurEnabled.current` **且** `isRuntimeShaderSupported()`，任一不满足返回 `null`。
 - 顶栏/底栏一律包 `BlurredBar(backdrop, blurActive)`（`BlurExt.kt`）。**`blurActive` 要显式传**：省略时它会退回自己的 `rememberBlurEnabled()` 默认值，与页面算出的值可能不一致。
-- 当前 6 个页面 + 底栏全部既取了 backdrop 又调用了 `layerBackdrop`，零遗漏。新页面漏掉 `layerBackdrop` 的症状：毛玻璃开着但顶栏底下是实色。
+- 当前 7 个页面 + 底栏全部既取了 backdrop 又调用了 `layerBackdrop`，零遗漏。新页面漏掉 `layerBackdrop` 的症状：毛玻璃开着但顶栏底下是实色。
 - 嵌套 `layerBackdrop` 合法：`AboutScreen` 的 hero 内层与 `IosLiquidGlassNavigationBar` 内层都另起一份 `rememberLayerBackdrop()`。
 - **`blurActive` 不总等于 `backdrop != null`**：`AboutScreen` 是 `backdrop != null && scrollProgress == 1f`，并且 bar 色在视差 hero 可见期间强制透明（即使 blur 关闭）。照抄上面两行 recipe 会做出错误的 AboutScreen 顶栏。
 - 搜索页在 `BlurredBar` **内层**套 `searchStatus.TopAppBarAnim(backgroundColor = 同 bar 色)`（不是替代 `BlurredBar`），见 `ScopeScreen`。
@@ -75,7 +75,7 @@ groupedCardItems("scope", items = listOf(
 - 条件行用 `buildList` 组 items，不要在 lambda 里写 if 空段。
 - **不加 item 动画**（拆分是不可见的纯性能优化，当前全模块零 `animateItem`）；需要动画自行在 item 内 `Modifier.animateItem(...)`，且 **placement spec 不能设 null**——否则下方各组硬跳、无展开感。
 - **豁免**：纯静态文本卡保持单 `item { Card }`（`DeviceInfoCard` 即是）。
-- **已知违例**（新代码不要照抄）：`StatusSection` 的 `item(key = "status")` 一个 item 里塞了 3 个 Card + 提示文本 + Dialog；`AppConfigScreen` 把整页塞进单个 `item {}`（该文件已 import `CardSegment` 并用在其中一组，其余没拆）。`AboutScreen` 的 `about` item 也是两个 Card 未拆——注意它**不是**视差豁免：真正的视差 hero 在 LazyColumn **之外**（`BgEffectBackground` 里的兄弟 Column），lazy 侧只有一个纯测量占位的 `logoSpacer` item。
+- **已知违例**（新代码不要照抄）：`StatusSection` 的 `item(key = "status")` 一个 item 里塞了 3 个 Card + 提示文本 + Dialog；`AppConfigScreen` 把整页塞进单个 `item {}`（该文件已 import `CardSegment` 并用在其中一组，其余没拆）。`AboutScreen` 的 `about` item 是单 Card 3 行未拆：拆成独立 lazy item 会丢掉同 item 内 `Spacer(fillParentMaxHeight)` 撑出的整屏滚动余量，而视差进度要靠它才能到 1f（内容变短后更依赖），3 行的组合开销可接受故保持。hero 本身**不是**豁免理由：真正的视差 hero 在 LazyColumn **之外**（`BgEffectBackground` 里的兄弟 Column），lazy 侧只有一个纯测量占位的 `logoSpacer` item。
 
 卡片间距：水平 12.dp（含 `GroupedCardItems` 的两个默认值）；纵向间距走每项自身 bottom padding，**LazyColumn 上不用 `Arrangement.spacedBy`**（与 lazy item 拆分冲突；现存 5 处 `spacedBy` 全在普通 Row/Column 上）。TextField 表单不包 Card，直接同样 padding。
 
@@ -121,4 +121,4 @@ groupedCardItems("scope", items = listOf(
 - **`component/animation/`**（`DampedDragAnimation`、`InteractiveHighlight`）：弹簧驱动的预测性返回与交互高光，`snapshotFlow` 用法的参照实现。
 - **`component/SearchBar.kt` / `SearchStatus.kt`**：`ScopeScreen` 的搜索态机。`SearchStatus` 是 `@Stable` data class 且自带 `@Composable` 成员 `TopAppBarAnim`；top padding 随展开态 `animateDpAsState`，**没有任何宽度分支**。
 - **`ui/util/`**：`WindowSize.kt` 只有 `horizontalCutoutPadding()`（名不符实）；`DeviceName.kt` 做机型市场名查询。
-- **`ui/navigation3/`**（`Navigator` + `Route`）：包名是迁移遗留，实际基于 miuix-nav（`NavKey` / `rememberNavBackStack` / `NavDisplay`），不是 androidx navigation3。`Route` 4 个成员对应 6 个页面（`Main` 内含 3 个 tab）。
+- **`ui/navigation3/`**（`Navigator` + `Route`）：包名是迁移遗留，实际基于 miuix-nav（`NavKey` / `rememberNavBackStack` / `NavDisplay`），不是 androidx navigation3。`Route` 5 个成员对应 7 个页面（`Main` 内含 3 个 tab）。

@@ -53,7 +53,6 @@ import com.nothing.camera2magic.ui.component.rememberBlurEnabled
 import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.ui.theme.LocalAppDarkMode
 import com.nothing.camera2magic.ui.util.horizontalCutoutPadding
-import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
@@ -61,7 +60,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.BlurColors
@@ -77,7 +75,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
-fun AboutScreen(onBack: () -> Unit = {}) {
+fun AboutScreen(onBack: () -> Unit = {}, onNavigateLicenses: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
     val scrollBehavior = MiuixScrollBehavior()
     val lazyListState = rememberLazyListState()
@@ -148,6 +146,7 @@ fun AboutScreen(onBack: () -> Unit = {}) {
                 lazyListState = lazyListState,
                 scrollProgress = scrollProgress,
                 onOpenUrl = uriHandler::openUri,
+                onNavigateLicenses = onNavigateLicenses,
             )
         }
     }
@@ -160,6 +159,7 @@ private fun AboutContent(
     lazyListState: LazyListState,
     scrollProgress: Float,
     onOpenUrl: (String) -> Unit,
+    onNavigateLicenses: () -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
@@ -288,45 +288,11 @@ private fun AboutContent(
                     Column(
                         modifier = Modifier.padding(bottom = 12.dp),
                     ) {
-                        SmallTitle(text = stringResource(R.string.about_info))
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp)
-                                .padding(bottom = 12.dp)
-                                .then(
-                                    if (blurEnabled) {
-                                        Modifier.textureBlur(
-                                            backdrop = backdrop,
-                                            shape = RoundedCornerShape(cardRadius),
-                                            blurRadius = 60f,
-                                            colors = BlurColors(blendColors = cardBlendColors),
-                                            enabled = true,
-                                        )
-                                    } else Modifier
-                                ),
-                            cornerRadius = cardRadius,
-                            colors = CardDefaults.defaultColors(
-                                if (blurEnabled) Color.Transparent else colorScheme.surfaceContainer,
-                                Color.Transparent,
-                            ),
-                        ) {
-                            BasicComponent(
-                                title = stringResource(R.string.about_app_version),
-                                summary = BuildConfig.VERSION_NAME,
-                            )
-                            BasicComponent(
-                                title = stringResource(R.string.about_build_version),
-                                summary = "${BuildConfig.VERSION_CODE}",
-                            )
-                        }
-
-                        SmallTitle(text = stringResource(R.string.about_project))
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp)
-                                .padding(bottom = 12.dp)
+                                .padding(top = 12.dp, bottom = 12.dp)
                                 .then(
                                     if (blurEnabled) {
                                         Modifier.textureBlur(
@@ -345,34 +311,16 @@ private fun AboutContent(
                             ),
                         ) {
                             ArrowPreference(
-                                title = "Camera2 Magic",
-                                summary = "github.com/servant1228/Camera2Magic",
-                                onClick = { onOpenUrl("https://github.com/servant1228/Camera2Magic") },
+                                title = stringResource(R.string.about_source_code),
+                                onClick = { onOpenUrl(SourceCodeUrl) },
                             )
                             ArrowPreference(
-                                title = "libxposed",
-                                summary = "github.com/libxposed/api",
-                                onClick = { onOpenUrl("https://github.com/libxposed/api") },
+                                title = stringResource(R.string.about_telegram_channel),
+                                onClick = { onOpenUrl(TelegramChannelUrl) },
                             )
                             ArrowPreference(
-                                title = "miuix",
-                                summary = "github.com/compose-miuix-ui/miuix",
-                                onClick = { onOpenUrl("https://github.com/compose-miuix-ui/miuix") },
-                            )
-                            ArrowPreference(
-                                title = "AndroidLiquidGlass",
-                                summary = "github.com/Kyant0/AndroidLiquidGlass",
-                                onClick = { onOpenUrl("https://github.com/Kyant0/AndroidLiquidGlass") },
-                            )
-                            ArrowPreference(
-                                title = "media3",
-                                summary = "github.com/androidx/media",
-                                onClick = { onOpenUrl("https://github.com/androidx/media") },
-                            )
-                            ArrowPreference(
-                                title = "hiddenapibypass",
-                                summary = "github.com/LSPosed/hiddenapibypass",
-                                onClick = { onOpenUrl("https://github.com/LSPosed/hiddenapibypass") },
+                                title = stringResource(R.string.about_licenses),
+                                onClick = onNavigateLicenses,
                             )
                         }
 
@@ -383,3 +331,6 @@ private fun AboutContent(
         }
     }
 }
+
+private const val SourceCodeUrl = "https://github.com/servant1228/Camera2Magic"
+private const val TelegramChannelUrl = "https://t.me/lazynb666"

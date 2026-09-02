@@ -80,6 +80,7 @@ import com.nothing.camera2magic.ui.screen.scope.ScopeScreen
 import com.nothing.camera2magic.ui.screen.scope.AppConfigScreen
 import com.nothing.camera2magic.ui.component.liquid.IosLiquidGlassNavigationBar
 import com.nothing.camera2magic.ui.screen.settings.AboutScreen
+import com.nothing.camera2magic.ui.screen.settings.LicensesScreen
 import com.nothing.camera2magic.ui.screen.settings.SettingsScreenContent
 import com.nothing.camera2magic.ui.screen.settings.ThemeSettingsScreen
 import com.nothing.camera2magic.ui.theme.BottomBarMode
@@ -334,7 +335,14 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
             }
 
             entry<Route.About> {
-                AboutScreen(onBack = { navigator.pop() })
+                AboutScreen(
+                    onBack = { navigator.pop() },
+                    onNavigateLicenses = { navigator.push(Route.Licenses) },
+                )
+            }
+
+            entry<Route.Licenses> {
+                LicensesScreen(onBack = { navigator.pop() })
             }
 
             entry<Route.AppConfig> { key ->
