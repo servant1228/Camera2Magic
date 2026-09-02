@@ -31,6 +31,15 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
             cachedJpegKey = null
             cachedJpegBytes = null
         }
+
+        // EXIF Orientation tag → 显示所需顺时针角度（6=顺90、3=180、8=逆90）。
+        // 镜像类 2/4/5/7 极罕见，与主流消费方一致按 0 处理
+        private fun orientationDegrees(tag: String?): Int = when (tag) {
+            "3" -> 180
+            "6" -> 90
+            "8" -> 270
+            else -> 0
+        }
     }
 
     init {
@@ -77,9 +86,13 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                     val pfd = runCatching { magic.openRemoteFile(validMedia.file) }.getOrNull()
                     if (pfd != null) {
                         try {
+                            // 相机帧 EXIF：HAL 按每次拍摄的 JPEG_ORIENTATION 写入，设备横竖屏
+                            // 变化后同一媒体需要不同的预旋转，因此方向必须参与缓存键
+                            val origExif = ExifInterface(java.io.ByteArrayInputStream(originalJpeg))
+                            val camDeg = orientationDegrees(origExif.getAttribute("Orientation"))
                             // 缓存键包含文件大小与修改时间：媒体重新上传后不会命中旧缓存
                             val st = runCatching { android.system.Os.fstat(pfd.fileDescriptor) }.getOrNull()
-                            val cacheKey = "${validMedia.file}_${st?.st_size}_${st?.st_mtime}_${originalW}_${originalH}"
+                            val cacheKey = "${validMedia.file}_${st?.st_size}_${st?.st_mtime}_${originalW}_${originalH}_$camDeg"
                             jpeg = if (cacheKey == cachedJpegKey) cachedJpegBytes else null
                             if (jpeg != null) {
                                 Dog.i(TAG, "Using cached JPEG, size=${jpeg.size}", SM.enableLog)
@@ -90,12 +103,36 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                 if (replBytes != null && replBytes.isNotEmpty()) {
                                     val replBmp = android.graphics.BitmapFactory.decodeByteArray(replBytes, 0, replBytes.size)
                                     if (replBmp != null) {
-                                        val scaled = android.graphics.Bitmap.createScaledBitmap(replBmp, originalW, originalH, true)
-                                        // 修复：当替换图与相机输出同尺寸时，createScaledBitmap 会直接返回原不可变位图，
-                                        // 此时 scaled 与 replBmp 是同一对象，不能重复 recycle，否则后续 compress 会抛
-                                        // "Can't compress a recycled bitmap"
-                                        if (scaled !== replBmp) {
+                                        // 方向语义：JPEG 面像素被 App 当作「传感器方向帧」消费——
+                                        // 显示旋转由帧内 EXIF（camDeg）驱动，替换像素必须预旋转到
+                                        // 同一语义：P' = CW(mediaDeg - camDeg)(媒体像素)，App 按
+                                        // camDeg 转回后恰好得到媒体正向画面。实测（星河水印相机
+                                        // postRotate(EXIF)）：不预旋转照片恒歪 90°，且 CameraX 的
+                                        // on-disk 补齐逻辑会把缺省 Orientation 按元数据转回，
+                                        // EXIF 侧无解。EXIF 仍继承相机帧——与预旋转后的像素配套，
+                                        // 对其他按标准语义消费 JPEG 的 App 同样自洽。
+                                        val mediaDeg = orientationDegrees(
+                                            runCatching {
+                                                ExifInterface(java.io.ByteArrayInputStream(replBytes)).getAttribute("Orientation")
+                                            }.getOrNull()
+                                        )
+                                        val preRotate = mediaDeg - camDeg
+                                        Dog.i(TAG, "orientation diag: camera=$camDeg media=$mediaDeg preRotate=$preRotate buf=${originalW}x${originalH}", SM.enableLog)
+                                        val oriented = if (preRotate % 360 != 0) {
+                                            val matrix = android.graphics.Matrix().apply { postRotate(preRotate.toFloat()) }
+                                            android.graphics.Bitmap.createBitmap(replBmp, 0, 0, replBmp.width, replBmp.height, matrix, true)
+                                        } else {
+                                            replBmp
+                                        }
+                                        if (oriented !== replBmp) {
                                             replBmp.recycle()
+                                        }
+                                        val scaled = android.graphics.Bitmap.createScaledBitmap(oriented, originalW, originalH, true)
+                                        // 修复：当替换图与相机输出同尺寸时，createScaledBitmap 会直接返回原不可变位图，
+                                        // 此时 scaled 与 oriented 是同一对象，不能重复 recycle，否则后续 compress 会抛
+                                        // "Can't compress a recycled bitmap"
+                                        if (scaled !== oriented) {
+                                            oriented.recycle()
                                         }
                                         val bos = java.io.ByteArrayOutputStream()
                                         val cap = buffer.capacity()
@@ -140,7 +177,6 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                         val tmpFile = java.io.File(GlobalState.appContext.cacheDir, "cam2magic_tmp.jpg")
                                         try {
                                             tmpFile.writeBytes(compressed)
-                                            val origExif = ExifInterface(java.io.ByteArrayInputStream(originalJpeg))
                                             val newExif = ExifInterface(tmpFile.getAbsolutePath())
                                             for (tag in listOf(
                                                 "Make", "Model", "DateTime", "DateTimeOriginal",
@@ -155,8 +191,9 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                                                     if (v != null) newExif.setAttribute(tag, v)
                                                 }
                                             }
-                                        // 保留原相机 EXIF Orientation（通常 6=顺时针90°），
-                                        // 查看器按 EXIF 旋转后即为正向画面
+                                        // Orientation 继承相机帧：替换像素已预旋转到
+                                        // 「传感器方向帧」语义（见上），两者配套后
+                                        // App 按该值旋转显示即为媒体正向画面
                                         runCatching {
                                             val v = origExif.getAttribute("Orientation")
                                             if (v != null) newExif.setAttribute("Orientation", v)
@@ -193,8 +230,14 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                 buffer.clear()
                 val limit = minOf(jpeg.size, buffer.capacity())
                 buffer.put(jpeg, 0, limit)
-                buffer.limit(limit)
-                Dog.i(TAG, "JPEG overwritten via buffer, size=$limit", SM.enableLog)
+                // 写入后必须恢复与原生相机帧等价的 buffer 状态：limit 保持 capacity、
+                // position 归零、未覆盖尾部零填充。CameraX 按 capacity() 消费 JPEG 面
+                // （rewind() 后 get(byte[capacity])），把 limit 缩小到 jpeg.size 会让
+                // remaining() < capacity 直接 BufferUnderflowException（App 报拍照失败）；
+                // 零填充尾部防止「从末尾找 EOI 推尺寸」的解析器误用原相机的残留字节。
+                while (buffer.hasRemaining()) buffer.put(0)
+                buffer.position(0)
+                Dog.i(TAG, "JPEG overwritten via buffer, jpeg=$limit capacity=${buffer.capacity()}", SM.enableLog)
             } catch (e: Exception) {
                 Dog.w(TAG, "JPEG buffer write failed, trying Unsafe: ${e.message}", SM.enableLog)
                 try {
@@ -206,10 +249,19 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                     val address = addressField.getLong(buffer)
                     val unsafe = Class.forName("sun.misc.Unsafe").getDeclaredField("theUnsafe").apply { isAccessible = true }.get(null)
                     val putByte = unsafe.javaClass.getMethod("putByte", Long::class.java, Byte::class.java)
-                    for (i in 0 until minOf(jpeg.size, buffer.capacity())) {
+                    val written = minOf(jpeg.size, buffer.capacity())
+                    for (i in 0 until written) {
                         putByte.invoke(unsafe, address + i, jpeg[i])
                     }
-                    Dog.i(TAG, "JPEG overwritten via Unsafe, size=${minOf(jpeg.size, buffer.capacity())}", SM.enableLog)
+                    // 与常规路径对齐：limit 保持 capacity、position 归零；若 buffer API
+                    // 仍不可用（通常正是走到这条兜底的原因）则放弃尾部清零，只保住写入结果
+                    runCatching {
+                        buffer.limit(buffer.capacity())
+                        buffer.position(written)
+                        while (buffer.hasRemaining()) buffer.put(0)
+                        buffer.position(0)
+                    }
+                    Dog.i(TAG, "JPEG overwritten via Unsafe, size=$written", SM.enableLog)
                 } catch (e2: Exception) {
                     Dog.e(TAG, "Unsafe also failed: ${e2.message}", e2, true)
                 }
