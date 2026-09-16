@@ -55,7 +55,6 @@ internal class InteractiveHighlight(
             )
             val spotColor = Color.White.copy(alpha = 0.12f * progress)
             if (spotShader != null) {
-                spotShader.setFloatUniform("size", size.width, size.height)
                 spotShader.setColorUniform("color", spotColor)
                 spotShader.setFloatUniform("radius", radius)
                 spotShader.setFloatUniform("position", center.x, center.y)
@@ -108,7 +107,6 @@ internal class InteractiveHighlight(
 
 // 中心半径一半内实心、向边缘 smoothstep 渐隐的按压光�?
 private const val SPOT_SHADER = """
-    uniform float2 size;
     layout(color) uniform half4 color;
     uniform float radius;
     uniform float2 position;
