@@ -8,7 +8,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurColors
+import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
@@ -28,7 +28,7 @@ fun Modifier.defaultBlurEffect(
     backdrop = backdrop,
     shape = RectangleShape,
     blurRadius = 25f,
-    colors = BlurColors(
+    colors = BlurDefaults.blurColors(
         blendColors = listOf(
             BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(0.8f)),
         ),

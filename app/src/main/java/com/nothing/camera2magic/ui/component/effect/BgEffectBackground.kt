@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.nothing.camera2magic.ui.theme.LocalAppDarkMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.floor
 import kotlin.time.Duration.Companion.milliseconds
@@ -31,7 +31,8 @@ fun BgEffectBackground(
     alpha: () -> Float = { 1f },
     content: @Composable BoxScope.() -> Unit,
 ) {
-    if (!isRuntimeShaderSupported()) {
+    val shaderSupported = remember { isRuntimeShaderSupported() }
+    if (!shaderSupported) {
         Box(modifier = modifier, content = content)
         return
     }

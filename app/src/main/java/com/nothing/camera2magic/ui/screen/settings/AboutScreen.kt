@@ -62,7 +62,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.BlurColors
+import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
@@ -230,7 +230,7 @@ private fun AboutContent(
                                 backdrop = backdrop,
                                 shape = RoundedCornerShape(16.dp),
                                 blurRadius = 150f,
-                                colors = BlurColors(blendColors = logoBlend),
+                                colors = BlurDefaults.blurColors(blendColors = logoBlend),
                                 contentBlendMode = BlendMode.DstIn,
                                 enabled = true,
                             )
@@ -299,7 +299,7 @@ private fun AboutContent(
                                             backdrop = backdrop,
                                             shape = RoundedCornerShape(cardRadius),
                                             blurRadius = 60f,
-                                            colors = BlurColors(blendColors = cardBlendColors),
+                                            colors = BlurDefaults.blurColors(blendColors = cardBlendColors),
                                             enabled = true,
                                         )
                                     } else Modifier
