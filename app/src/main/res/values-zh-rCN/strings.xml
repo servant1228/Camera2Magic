@@ -57,6 +57,10 @@
     <string name="settings_predictive_back_summary">启用系统级预测性返回动画</string>
     <string name="settings_density_scale">界面缩放</string>
     <string name="settings_density_scale_summary">调整全局界面比例</string>
+    <string name="settings_icon_pack">应用图标包</string>
+    <string name="settings_icon_pack_default">应用自带图标</string>
+    <string name="settings_icon_pack_default_summary">使用各应用自带的原始图标</string>
+    <string name="settings_icon_pack_empty">未找到启动器图标包。安装兼容 ADW 格式的图标包（如 Nova、Lawnchair 图标包）后即可在此选择。</string>
     <string name="settings_navigation_bar">底栏导航栏</string>
     <string name="settings_floating_bar">悬浮底栏</string>
     <string name="settings_floating_bar_summary">使用悬浮样式底部导航栏</string>

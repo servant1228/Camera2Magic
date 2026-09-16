@@ -51,6 +51,7 @@ import com.nothing.camera2magic.ui.theme.ThemeAccentColor
 import com.nothing.camera2magic.ui.theme.ThemeConfig
 import com.nothing.camera2magic.ui.theme.label
 import com.nothing.camera2magic.ui.theme.normalizeDensityScale
+import com.nothing.camera2magic.utils.LocalInstalledIconPacks
 import com.nothing.camera2magic.viewmodel.SettingsViewModel
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -83,6 +84,7 @@ fun ThemeSettingsScreen(
     viewModel: SettingsViewModel,
     onThemeConfigChanged: (ThemeConfig) -> Unit = {},
     onBack: () -> Unit = {},
+    onNavigateIconPack: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val themeConfig = uiState.themeConfig
@@ -133,6 +135,12 @@ fun ThemeSettingsScreen(
     val bottomBarModeItems = bottomBarModes.map { it.label() }
     val selectedBottomBarModeIndex = bottomBarModes.indexOf(themeConfig.bottomBarMode).coerceAtLeast(0)
     val isBlurSupported = isRuntimeShaderSupported()
+    val installedIconPacks = LocalInstalledIconPacks.current
+    val iconPackSummary = if (themeConfig.iconPack.isEmpty()) {
+        stringResource(R.string.settings_icon_pack_default)
+    } else {
+        installedIconPacks.firstOrNull { it.packageName == themeConfig.iconPack }?.label ?: themeConfig.iconPack
+    }
 
     val backdrop = rememberBlurBackdrop()
     val blurActive = backdrop != null
@@ -253,6 +261,13 @@ fun ThemeSettingsScreen(
                             onCheckedChange = { checked ->
                                 updateTheme(themeConfig.copy(predictiveBack = checked))
                             },
+                        )
+                    })
+                    add(CardItem("iconPack") {
+                        ArrowPreference(
+                            title = stringResource(R.string.settings_icon_pack),
+                            summary = iconPackSummary,
+                            onClick = onNavigateIconPack,
                         )
                     })
                     add(CardItem("densityScale") {

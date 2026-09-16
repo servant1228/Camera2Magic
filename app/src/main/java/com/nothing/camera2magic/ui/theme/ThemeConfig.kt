@@ -54,6 +54,8 @@ data class ThemeConfig(
     val floatingBottomBarStyle: FloatingBottomBarStyle = FloatingBottomBarStyle.IosLike,
     val bottomBarMode: BottomBarMode = BottomBarMode.IconAndText,
     val densityScale: Float = DefaultDensityScale,
+    // 作用域列表/应用配置页使用的图标包包名，空串 = 应用自带图标
+    val iconPack: String = "",
 )
 
 fun ThemeConfig.resolveIsDark(systemDark: Boolean): Boolean = when (colorMode) {
@@ -88,6 +90,7 @@ fun readThemeConfig(repository: ConfigRepository): ThemeConfig {
         bottomBarMode = BottomBarMode.fromStorage(repository.themeBottomBarMode),
         densityScale = normalizeDensityScale(repository.themeDensityScale),
         predictiveBack = repository.themePredictiveBack,
+        iconPack = repository.themeIconPack,
     )
 }
 
@@ -103,4 +106,5 @@ fun writeThemeConfig(repository: ConfigRepository, config: ThemeConfig) {
     repository.themeBottomBarMode = config.bottomBarMode.storageValue
     repository.themeDensityScale = normalizeDensityScale(config.densityScale)
     repository.themePredictiveBack = config.predictiveBack
+    repository.themeIconPack = config.iconPack
 }

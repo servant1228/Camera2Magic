@@ -101,7 +101,7 @@ groupedCardItems("scope", items = listOf(
 - **主题状态双份是设计而非缺陷**：`MainActivity` 持有 `themeConfig` state，`SettingsViewModel.uiState` 里还有一份；UI 改主题经 `onThemeConfigChanged` 回调上抛到 MainActivity 统一持久化。持久化的类型陷阱在 AGENTS.md 配置流一节（读写都走 `ConfigRepository` 的属性就安全）。
 - `theme_predictive_back` 变化会 `recreateWithoutTransition()` 整个重建 Activity。根因不在 manifest：预测性返回是 `HiddenApiBypass` + 反射 `ApplicationInfo.setEnableOnBackInvokedCallback`，只在 `onCreate` 生效，所以必须重建。这也是 `MainActivity.onCreate` 唯一合法地绕过 `ConfigRepository` 直读该键的原因（要早于 Compose）。
 - **ViewModel 无 DI 框架**：手写 [ViewModelFactory](../app/src/main/java/com/nothing/camera2magic/viewmodel/ViewModelFactory.kt)（`when` 分支 new，只认 `SettingsViewModel`/`HomeViewModel`，其余抛），经 `LocalViewModelFactory` 下发。
-- CompositionLocal 分两类，加新的照此判断：**装配必需的用 `error()` 默认值**——`LocalConfigRepository`、`LocalViewModelFactory`、`LocalNavigator`，新 composable 直接读 `.current` 会在预览/测试里炸，这是故意的，缺 provider 是装配错误要修装配而不是给默认值；**纯表现型的给真实默认值**——`LocalThemeConfig`（注意它是 `compositionLocalOf` 而非 `static`，重组作用域不同）、`LocalAppDarkMode`、`LocalAppMonetEnabled`、`LocalBlurEnabled`。
+- CompositionLocal 分两类，加新的照此判断：**装配必需的用 `error()` 默认值**——`LocalConfigRepository`、`LocalViewModelFactory`、`LocalNavigator`、`LocalAppIconResolver`，新 composable 直接读 `.current` 会在预览/测试里炸，这是故意的，缺 provider 是装配错误要修装配而不是给默认值；**纯表现型的给真实默认值**——`LocalThemeConfig`（注意它是 `compositionLocalOf` 而非 `static`，重组作用域不同）、`LocalAppDarkMode`、`LocalAppMonetEnabled`、`LocalBlurEnabled`、`LocalInstalledIconPacks`（默认空列表）。
 
 ## 数据与动画纪律
 
@@ -121,4 +121,4 @@ groupedCardItems("scope", items = listOf(
 - **`component/animation/`**（`DampedDragAnimation`、`InteractiveHighlight`）：弹簧驱动的预测性返回与交互高光，`snapshotFlow` 用法的参照实现。
 - **`component/SearchBar.kt` / `SearchStatus.kt`**：`ScopeScreen` 的搜索态机。`SearchStatus` 是 `@Stable` data class 且自带 `@Composable` 成员 `TopAppBarAnim`；top padding 随展开态 `animateDpAsState`，**没有任何宽度分支**。
 - **`ui/util/`**：`WindowSize.kt` 只有 `horizontalCutoutPadding()`（名不符实）；`DeviceName.kt` 做机型市场名查询。
-- **`ui/navigation3/`**（`Navigator` + `Route`）：包名是迁移遗留，实际基于 miuix-nav（`NavKey` / `rememberNavBackStack` / `NavDisplay`），不是 androidx navigation3。`Route` 5 个成员对应 7 个页面（`Main` 内含 3 个 tab）。
+- **`ui/navigation3/`**（`Navigator` + `Route`）：包名是迁移遗留，实际基于 miuix-nav（`NavKey` / `rememberNavBackStack` / `NavDisplay`），不是 androidx navigation3。`Route` 6 个成员对应 8 个页面（`Main` 内含 3 个 tab）。

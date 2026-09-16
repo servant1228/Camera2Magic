@@ -56,6 +56,10 @@
     <string name="settings_predictive_back_summary">Enable system-level predictive back animation</string>
     <string name="settings_density_scale">UI Scale</string>
     <string name="settings_density_scale_summary">Adjust the global interface scale</string>
+    <string name="settings_icon_pack">App Icon Pack</string>
+    <string name="settings_icon_pack_default">App Default</string>
+    <string name="settings_icon_pack_default_summary">Use each app\'s original icon</string>
+    <string name="settings_icon_pack_empty">No launcher icon pack found. Install an ADW-compatible icon pack (e.g. from Nova or Lawnchair) to use it here.</string>
     <string name="settings_navigation_bar">Navigation Bar</string>
     <string name="settings_floating_bar">Floating Bar</string>
     <string name="settings_floating_bar_summary">Use floating style bottom navigation bar</string>

@@ -239,6 +239,11 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean("theme_predictive_back", true)
         set(value) = save("theme_predictive_back", value)
 
+    // 作用域列表/应用配置页使用的图标包（空串 = 用应用自带图标）
+    var themeIconPack: String
+        get() = prefs.getString("theme_icon_pack", "") ?: ""
+        set(value) = save("theme_icon_pack", value)
+
     // Per-app config
 
     fun getAppHookEnabled(packageName: String): Boolean =

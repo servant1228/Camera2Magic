@@ -2,10 +2,6 @@ package com.nothing.camera2magic.ui.screen.scope
 
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -61,6 +57,8 @@ import com.nothing.camera2magic.ui.component.SearchPager
 import com.nothing.camera2magic.ui.component.SearchStatus
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
 import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
+import com.nothing.camera2magic.ui.theme.LocalThemeConfig
+import com.nothing.camera2magic.utils.LocalAppIconResolver
 import com.nothing.camera2magic.viewmodel.HomeViewModel
 import com.nothing.camera2magic.viewmodel.LocalViewModelFactory
 import top.yukonga.miuix.kmp.basic.Card
@@ -274,7 +272,8 @@ fun ScopeScreen(
 
 @Composable
 private fun ScopeAppCard(app: ScopeApp, onClick: () -> Unit) {
-    val context = LocalContext.current
+    val resolver = LocalAppIconResolver.current
+    val iconPack = LocalThemeConfig.current.iconPack
     val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
     Card(
         modifier = Modifier
@@ -288,8 +287,8 @@ private fun ScopeAppCard(app: ScopeApp, onClick: () -> Unit) {
         insideMargin = PaddingValues(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val icon = remember(app.packageName, iconSizePx) {
-                loadAppIcon(context, app.packageName, iconSizePx)
+            val icon = remember(app.packageName, iconSizePx, iconPack) {
+                resolver.load(iconPack, app.packageName, iconSizePx)
             }
             if (icon != null) {
                 Image(
@@ -342,14 +341,4 @@ private fun loadScopeApps(context: android.content.Context, scopePackages: List<
             }.getOrNull()
         }.sortedBy { it.label.lowercase() }
     }.getOrDefault(emptyList())
-}
-
-internal fun loadAppIcon(context: android.content.Context, packageName: String, sizePx: Int = 96): Bitmap? {
-    return runCatching {
-        val drawable = context.packageManager.getApplicationIcon(packageName)
-        Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888).also { bitmap ->
-            drawable.setBounds(0, 0, sizePx, sizePx)
-            drawable.draw(Canvas(bitmap))
-        }
-    }.getOrNull()
 }

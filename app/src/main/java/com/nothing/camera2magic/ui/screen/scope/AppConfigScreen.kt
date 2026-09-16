@@ -64,9 +64,11 @@ import com.nothing.camera2magic.ui.component.CardSegment
 import com.nothing.camera2magic.ui.component.ListPopupDefaults
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
 import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
+import com.nothing.camera2magic.ui.theme.LocalThemeConfig
 import com.nothing.camera2magic.utils.MediaPathResolver
 import com.nothing.camera2magic.utils.LensKeys
 import com.nothing.camera2magic.utils.LensSlot
+import com.nothing.camera2magic.utils.LocalAppIconResolver
 import com.nothing.camera2magic.viewmodel.ConfigRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -389,7 +391,8 @@ private fun AppConfigInner(
     pendingTarget: MediaTarget?,
     onPickMedia: (MediaMode) -> Unit,
 ) {
-    val context = LocalContext.current
+    val resolver = LocalAppIconResolver.current
+    val iconPack = LocalThemeConfig.current.iconPack
     val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
     Column {
         Card(
@@ -401,8 +404,8 @@ private fun AppConfigInner(
             insideMargin = PaddingValues(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val icon = remember(packageName, iconSizePx) {
-                    loadAppIcon(context, packageName, iconSizePx)
+                val icon = remember(packageName, iconSizePx, iconPack) {
+                    resolver.load(iconPack, packageName, iconSizePx)
                 }
                 if (icon != null) {
                     Image(

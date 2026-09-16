@@ -80,6 +80,7 @@ import com.nothing.camera2magic.ui.screen.scope.ScopeScreen
 import com.nothing.camera2magic.ui.screen.scope.AppConfigScreen
 import com.nothing.camera2magic.ui.component.liquid.IosLiquidGlassNavigationBar
 import com.nothing.camera2magic.ui.screen.settings.AboutScreen
+import com.nothing.camera2magic.ui.screen.settings.IconPackSettingsScreen
 import com.nothing.camera2magic.ui.screen.settings.LicensesScreen
 import com.nothing.camera2magic.ui.screen.settings.SettingsScreenContent
 import com.nothing.camera2magic.ui.screen.settings.ThemeSettingsScreen
@@ -97,10 +98,16 @@ import com.nothing.camera2magic.viewmodel.LocalConfigRepository
 import com.nothing.camera2magic.viewmodel.LocalViewModelFactory
 import com.nothing.camera2magic.viewmodel.SettingsViewModel
 import com.nothing.camera2magic.viewmodel.ViewModelFactory
+import com.nothing.camera2magic.utils.AppIconResolver
+import com.nothing.camera2magic.utils.IconPackInfo
+import com.nothing.camera2magic.utils.LocalAppIconResolver
+import com.nothing.camera2magic.utils.LocalInstalledIconPacks
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurDefaults
@@ -140,12 +147,21 @@ class MainActivity : ComponentActivity() {
             val initialConfig = remember { readThemeConfig(repository) }
             var themeConfig by remember { mutableStateOf(initialConfig) }
             val factory = remember { ViewModelFactory(repository) }
+            val appIconResolver = remember { AppIconResolver(applicationContext) }
+            var installedIconPacks by remember { mutableStateOf(emptyList<IconPackInfo>()) }
+            LaunchedEffect(Unit) {
+                installedIconPacks = withContext(Dispatchers.IO) {
+                    AppIconResolver.loadInstalledIconPacks(applicationContext)
+                }
+            }
             Camera2MagicTheme(themeConfig = themeConfig) {
                 CompositionLocalProvider(
                     LocalConfigRepository provides repository,
                     LocalThemeConfig provides themeConfig,
                     LocalViewModelFactory provides factory,
                     LocalBlurEnabled provides themeConfig.blurEnabled,
+                    LocalAppIconResolver provides appIconResolver,
+                    LocalInstalledIconPacks provides installedIconPacks,
                 ) {
                     AppNavigation(themeConfig = themeConfig, onThemeConfigChanged = { config ->
                         val changed = themeConfig.predictiveBack != config.predictiveBack
@@ -328,6 +344,15 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
 
             entry<Route.ThemeSettings> {
                 ThemeSettingsScreen(
+                    viewModel = settingsViewModel,
+                    onThemeConfigChanged = onThemeConfigChanged,
+                    onBack = { navigator.pop() },
+                    onNavigateIconPack = { navigator.push(Route.IconPackSettings) },
+                )
+            }
+
+            entry<Route.IconPackSettings> {
+                IconPackSettingsScreen(
                     viewModel = settingsViewModel,
                     onThemeConfigChanged = onThemeConfigChanged,
                     onBack = { navigator.pop() },
