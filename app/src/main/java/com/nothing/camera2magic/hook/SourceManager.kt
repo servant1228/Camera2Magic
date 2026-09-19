@@ -212,6 +212,7 @@ object SourceManager {
                     modeKey = LensKeys.legacyMediaMode(pkg),
                     photoKey = LensKeys.legacyRemotePhoto(pkg),
                     videoKey = LensKeys.legacyRemoteVideo(pkg),
+                    streamKey = null,
                     fallback = null,
                 )
                 val resolved = LensSlot.entries.associateWith { slot ->
@@ -219,6 +220,7 @@ object SourceManager {
                         modeKey = LensKeys.mediaMode(slot, pkg),
                         photoKey = LensKeys.remotePhoto(slot, pkg),
                         videoKey = LensKeys.remoteVideo(slot, pkg),
+                        streamKey = LensKeys.streamUrl(slot, pkg),
                         fallback = legacy,
                     )
                 }
@@ -244,21 +246,29 @@ object SourceManager {
     /**
      * 读一槽的媒体。**模式键是权威的**（与改动前一致）：选了 photo 就只看 photo 文件，
      * 另一模式存了东西也不作数——跨模式兑底会让「配置」下拉框的语义发模糊。
-     * 只有整槽没显式配置（两个文件键都缺）时才交给 [fallback]（旧版共享配置）。
+     * 只有整槽没显式配置（三个媒体键都缺**且**模式键也不存在）时才交给 [fallback]（旧版共享配置）。
      * 旧键也没配（或已迁移）时就是 null——**不向另一槽借用**，那一镜头直接输出真实画面。
+     *
+     * 网络流的「源」是 [streamKey] 里的 URL 字符串，与本地媒体的远程文件名同一层级，
+     * 所以它同样参与「整槽是否显式配置」的判定；但它永远不来自旧键（旧版没有按槽的流配置）。
      */
     private fun readSlotMedia(
         modeKey: String,
         photoKey: String,
         videoKey: String,
+        streamKey: String?,
         fallback: ValidMedia?,
     ): ValidMedia? {
         val photo = prefs.getString(photoKey, null)
         val video = prefs.getString(videoKey, null)
-        if (photo == null && video == null) return fallback
+        val stream = streamKey?.let { prefs.getString(it, null) }
+        // 模式键也算「显式配置」：用户把某槽设成 network 却还没填地址时，
+        // 三个媒体键都空也不能回退旧键（否则会把用户删掉的旧媒体「复活」）
+        if (photo == null && video == null && stream == null && !prefs.contains(modeKey)) return fallback
         return when (prefs.getString(modeKey, "photo") ?: "photo") {
             "photo" -> photo?.let { ValidMedia(it, MagicType.LOCAL_IMAGE) }
             "video" -> video?.let { ValidMedia(it, MagicType.LOCAL_VIDEO) }
+            "network" -> stream?.let { ValidMedia(it, MagicType.NETWORK_STREAM) }
             else -> null
         }
     }

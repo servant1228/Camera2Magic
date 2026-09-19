@@ -29,6 +29,9 @@ object LensKeys {
     fun mediaMode(slot: LensSlot, pkg: String) = "app_media_mode_${slot.id}_$pkg"
     fun remotePhoto(slot: LensSlot, pkg: String) = "app_remote_photo_${slot.id}_$pkg"
     fun remoteVideo(slot: LensSlot, pkg: String) = "app_remote_video_${slot.id}_$pkg"
+
+    /** 网络视频流地址（rtsp/http/hls）。URL 是纯字符串，不走文件拷贝，Hook 侧直接读它。 */
+    fun streamUrl(slot: LensSlot, pkg: String) = "app_stream_url_${slot.id}_$pkg"
     fun photoUri(slot: LensSlot, pkg: String) = "app_photo_uri_${slot.id}_$pkg"
     fun videoUri(slot: LensSlot, pkg: String) = "app_video_uri_${slot.id}_$pkg"
 

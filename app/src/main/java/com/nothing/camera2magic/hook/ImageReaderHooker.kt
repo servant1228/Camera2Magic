@@ -68,6 +68,13 @@ class ImageReaderHooker(val magic: MagicHook, param: PackageReadyParam) : HookMa
                 Dog.i(TAG, "No valid media set, returning original image", SM.enableLog)
                 return image
             }
+            // JPEG 替换只对本地图片有意义：视频 / 网络流没有「一张图」可解，
+            // 且网络流的 file 是 URL，传给 openRemoteFile 会去开一个非法文件名。
+            // （视频/流的替换帧由 native 引擎在 Camera1 拍照路径与 YUV 路径提供）
+            if (validMedia.type != MagicType.LOCAL_IMAGE) {
+                Dog.i(TAG, "non-image media (${validMedia.type.label}), keeping original JPEG", SM.enableLog)
+                return image
+            }
             val buffer = image.planes[0].buffer
             val originalSize = buffer.remaining()
             val originalJpeg = ByteArray(originalSize)

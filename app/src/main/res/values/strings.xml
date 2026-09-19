@@ -93,8 +93,12 @@
     <string name="app_config_profile">Config</string>
     <string name="app_config_photo">Photo</string>
     <string name="app_config_video">Video</string>
+    <string name="app_config_network">Network Stream</string>
     <string name="app_config_select_photo">Select Photo</string>
     <string name="app_config_select_video">Select Video</string>
+    <string name="app_config_stream_url">Stream URL</string>
+    <string name="app_config_stream_url_summary">RTSP / HTTP(S)</string>
+    <string name="app_config_stream_url_invalid">Only rtsp://, rtsps://, http:// and https:// are supported</string>
     <string name="app_config_no_media">Not selected</string>
     <string name="app_config_launch_app">Launch</string>
     <string name="app_config_force_stop">Force Stop</string>

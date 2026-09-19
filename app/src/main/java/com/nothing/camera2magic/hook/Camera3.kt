@@ -23,6 +23,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.nothing.camera2magic.GlobalState
@@ -49,6 +50,10 @@ class Camera3 {
         // 帧重绘间隔 ≈30fps：仅驱动 OES 纹理持续更新，实际输出帧率由相机管线决定
         private const val FRAME_INTERVAL_MS = 33L
 
+        // 网络流断线重试节奏：直播流断线很常见，而 ExoPlayer 默认不自动重连
+        private const val NETWORK_RETRY_DELAY_MS = 2000L
+        private const val MAX_NETWORK_RETRIES = 3
+
         // Hook 跑在目标应用进程，内存账算它的：低内存设备降档
         private val frameLongEdge: Int by lazy {
             runCatching {
@@ -67,6 +72,13 @@ class Camera3 {
         private var pfd: ParcelFileDescriptor? = null
         @Volatile
         private var activeType: MagicType? = null
+        // 当前正在播的网络流 URL：断流重试时靠它判断「这条流还是不是当前生效的媒体」
+        @Volatile
+        private var activeNetworkUrl: String? = null
+        // 网络流重试计数。onPlayerError/onIsPlayingChanged 在目标应用主线程回调，
+        // 而重试体在 camera3Handler 线程，必须 @Volatile（丢失一次归零只会多重试一轮，不致命）
+        @Volatile
+        private var networkRetryCount = 0
         private var imageRendering: Boolean = false
         private var cachedBitmap: Bitmap? = null
         private var oesTextureId: Int = 0
@@ -84,12 +96,14 @@ class Camera3 {
             val width = (videoSize.width * pixelRatio).toInt()
             val height = videoSize.height
             val rotation = videoSize.unappliedRotationDegrees
+            Dog.i(TAG, "video size: ${videoSize.width}x${videoSize.height} ratio=$pixelRatio -> ${width}x$height rot=$rotation", SM.enableLog)
             NB.updateFrameInfo(width, height, rotation)
             SM.applyManualRotationToNative()
             surfaceTexture?.setDefaultBufferSize(width, height)
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            Dog.i(TAG, "player state: ${stateName(playbackState)}", SM.enableLog)
             when(playbackState) {
                 Player.STATE_IDLE -> notifyState(State.IDLE)
                 Player.STATE_BUFFERING -> notifyState(State.BUFFERING)
@@ -99,16 +113,29 @@ class Camera3 {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (isPlaying) notifyState(State.PLAYING)
-            else if (player?.playbackState != Player.STATE_ENDED) notifyState(State.PAUSE)
+            if (isPlaying) {
+                // 播放恢复正常，重试计数归零
+                networkRetryCount = 0
+                notifyState(State.PLAYING)
+            } else if (player?.playbackState != Player.STATE_ENDED) notifyState(State.PAUSE)
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Dog.e(TAG, "${error.errorCodeName} - ${error.message}", error, SM.enableLog)
+            Dog.e(TAG, "${error.errorCodeName} - ${error.message} | cause=${error.cause?.javaClass?.simpleName}: ${error.cause?.message}", error, SM.enableLog)
             notifyState(State.ERROR)
+            scheduleNetworkRetry()
         }
     }
 
+    private fun stateName(s: Int): String = when (s) {
+        Player.STATE_IDLE -> "IDLE"
+        Player.STATE_BUFFERING -> "BUFFERING"
+        Player.STATE_READY -> "READY"
+        Player.STATE_ENDED -> "ENDED"
+        else -> "UNKNOWN($s)"
+    }
+
+    @OptIn(UnstableApi::class)
     fun init() {
         if (!initialized.compareAndSet(false, true)) return
         // 这个函数跑在 "Camera3" 的 HandlerThread 上，抛到 Looper 就是目标应用直接挂掉；
@@ -126,10 +153,20 @@ class Camera3 {
             NB.setSurfaceTexture(surfaceTexture!!)
             surface = Surface(surfaceTexture)
 
-            player = ExoPlayer.Builder(GlobalState.appContext).build().apply {
-                repeatMode = Player.REPEAT_MODE_ALL
-                addListener(playerListener)
-            }
+            // 起播门槛从默认 1000ms 降到 300ms：网络流在弱网/高延迟下要等够 1s 媒体
+            // 才出第一帧，用户会当成黑屏。注意本地视频的 uri 是 "LOCAL://VIDEO"，
+            // 不在 DefaultLoadControl 的 LOCAL_PLAYBACK_SCHEMES 里，同样按 streaming 配置走
+            player = ExoPlayer.Builder(GlobalState.appContext)
+                .setLoadControl(
+                    DefaultLoadControl.Builder()
+                        .setBufferDurationsMsForStreaming(1500, 15000, 300, 800)
+                        .build()
+                )
+                .build()
+                .apply {
+                    repeatMode = Player.REPEAT_MODE_ALL
+                    addListener(playerListener)
+                }
             Dog.i(TAG, "camera3 client initialized.", SM.enableLog)
         }.onFailure { e ->
             initialized.set(false)
@@ -158,14 +195,28 @@ class Camera3 {
         // DataSource 在 open 时已 dup 私有副本，关它不影响仍在读的旧播放
         runCatching { pfd?.close() }
         pfd = null
+        // 每次换源先清掉上一条网络流的重试状态；network 分支会重新赋值
+        activeNetworkUrl = null
+        networkRetryCount = 0
         // openRemoteFile 会抛 FileNotFoundException，而这个 block 跑在 Camera3 的 HandlerThread 上，
         // 漏到 Looper 就是目标应用直接挂掉（媒体文件被删 / 模块数据被清时就会遇到）
         when (type) {
+            MagicType.NETWORK_STREAM -> {
+                if (name.isNotBlank()) {
+                    handleNetworkStream(name)
+                    // 同本地媒体的「拿到帧源才记类型」：init() 失败时 player 不可用，
+                    // 记了类型会让下一次同类型重起跳过重建
+                    if (initialized.get()) activeType = type
+                }
+            }
+
             MagicType.LOCAL_VIDEO -> {
                 pfd = runCatching { magic.openRemoteFile(name) }
                     .onFailure { Dog.e(TAG, "open remote video failed: ${it.message}", it, SM.enableLog) }
                     .getOrNull()
                 pfd?.let { handleLocalVideo(it) }
+                // 只在真的拿到帧源时记类型；失败时保持原值，下次同类型重起仍是原地换源
+                if (pfd != null) activeType = type
             }
 
             MagicType.LOCAL_IMAGE -> {
@@ -173,10 +224,59 @@ class Camera3 {
                     .onFailure { Dog.e(TAG, "open remote image failed: ${it.message}", it, SM.enableLog) }
                     .getOrNull()
                 pfd?.let { handleLocalImage(it) }
+                if (pfd != null) activeType = type
             }
         }
-        // 只在真的拿到帧源时记类型；失败时保持原值，下次同类型重起仍是原地换源
-        if (pfd != null) activeType = type
+    }
+
+    /**
+     * 网络视频流：直接用 ExoPlayer 默认的 HTTP/RTSP 工厂拉流，不经过 [MagicDataSource]。
+     * 注意这里没有 pfd，[openMedia] 里的 activeType 由本分支自己记。
+     */
+    private fun handleNetworkStream(url: String) {
+        activeNetworkUrl = url
+        val volumeValue = if (SM.playSound) 1f else 0f
+        Dog.i(TAG, "open network stream: $url (volume=$volumeValue)", SM.enableLog)
+        camera3Handler.post {
+            player?.apply {
+                volume = volumeValue
+                setVideoSurface(surface)
+                setMediaItem(MediaItem.fromUri(url))
+                prepare()
+                playWhenReady = true
+            } ?: Dog.e(TAG, "network stream skipped: player is null", null, SM.enableLog)
+        }
+    }
+
+    /**
+     * 网络流断线重试。只在「这条流仍是当前生效媒体」且管线还活着时重试，
+     * 否则（用户改了配置 / 清了媒体 / 换了镜头）静默放弃。
+     */
+    private fun scheduleNetworkRetry() {
+        val url = activeNetworkUrl ?: return
+        if (!initialized.get()) return
+        if (networkRetryCount >= MAX_NETWORK_RETRIES) {
+            Dog.w(TAG, "network stream retry exhausted: $url", SM.enableLog)
+            return
+        }
+        networkRetryCount++
+        Dog.w(TAG, "network stream error, retry #$networkRetryCount in ${NETWORK_RETRY_DELAY_MS}ms: $url", SM.enableLog)
+        camera3Handler.removeCallbacks(networkRetryRunnable)
+        camera3Handler.postDelayed(networkRetryRunnable, NETWORK_RETRY_DELAY_MS)
+    }
+
+    private val networkRetryRunnable = Runnable {
+        val url = activeNetworkUrl ?: return@Runnable
+        if (!initialized.get()) return@Runnable
+        // 期间媒体被切走 / 清空：放弃重试
+        if (SM.validMedia?.type != MagicType.NETWORK_STREAM || SM.validMedia?.file != url) return@Runnable
+        runCatching {
+            player?.apply {
+                setMediaItem(MediaItem.fromUri(url))
+                prepare()
+                playWhenReady = true
+            }
+        }.onFailure { Dog.e(TAG, "network stream retry failed: ${it.message}", it, SM.enableLog) }
     }
 
     @OptIn(UnstableApi::class)
@@ -262,9 +362,12 @@ class Camera3 {
         camera3Handler.post {
             imageRendering = false
             camera3Handler.removeCallbacks(imageRenderRunnable)
+            camera3Handler.removeCallbacks(networkRetryRunnable)
             player?.release()
             releaseResources()
             activeType = null
+            activeNetworkUrl = null
+            networkRetryCount = 0
             initialized.set(false)
         }
     }

@@ -94,8 +94,12 @@
     <string name="app_config_profile">配置</string>
     <string name="app_config_photo">照片</string>
     <string name="app_config_video">视频</string>
+    <string name="app_config_network">网络视频流</string>
     <string name="app_config_select_photo">选择照片</string>
     <string name="app_config_select_video">选择视频</string>
+    <string name="app_config_stream_url">视频流地址</string>
+    <string name="app_config_stream_url_summary">RTSP / HTTP(S)</string>
+    <string name="app_config_stream_url_invalid">只支持 rtsp://、rtsps://、http://、https://</string>
     <string name="app_config_no_media">未选择</string>
     <string name="app_config_launch_app">启动</string>
     <string name="app_config_force_stop">强制停止</string>

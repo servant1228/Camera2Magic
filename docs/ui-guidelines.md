@@ -81,7 +81,7 @@ groupedCardItems("scope", items = listOf(
 
 ## Dialog
 
-全模块只有两个 Dialog，都是 miuix `WindowDialog`：`ThemeSettingsScreen.DensityScaleDialog`（参照实现）与 `StatusSection.HookModeDialog`。
+全模块有三个 Dialog，都是 miuix `WindowDialog`：`ThemeSettingsScreen.DensityScaleDialog`（参照实现）、`StatusSection.HookModeDialog` 与 `AppConfigScreen.StreamUrlDialog`（网络流地址输入，同样是 `TextField` + `cancel | confirm`）。
 
 - **按钮顺序 `cancel | confirm`**，两个按钮各 `weight(1f)` + `Arrangement.spacedBy(8.dp)`，confirm 用 `ButtonDefaults.textButtonColorsPrimary()`。
 - **弹 Dialog 的入口行设 `holdDownState`**（dialog 打开期间保持按下态，MIUI 惯例），如 `ThemeSettingsScreen` 的 `ArrowPreference`。注意**该参数只存在于 `BasicComponent` 家族（`ArrowPreference` 等）与 `IconButton` 上，miuix `Card` 没有**——所以以 `Card` 作 Dialog 入口（`StatusSection` 的 Hook 模式卡）无法遵守这条，别去硬加参数。`AppConfigScreen` 那处 `holdDownState` 配的是 `OverlayListPopup`（弹出菜单）而不是 Dialog，同样是正确用法。

@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +55,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -65,6 +68,7 @@ import com.nothing.camera2magic.ui.component.ListPopupDefaults
 import com.nothing.camera2magic.ui.component.rememberBlurBackdrop
 import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
 import com.nothing.camera2magic.ui.theme.LocalThemeConfig
+import com.nothing.camera2magic.ui.theme.StatusColors
 import com.nothing.camera2magic.utils.MediaPathResolver
 import com.nothing.camera2magic.utils.LensKeys
 import com.nothing.camera2magic.utils.LensSlot
@@ -75,6 +79,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.squircle.squircleClip
@@ -86,6 +91,8 @@ import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -93,6 +100,7 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.MoreCircle
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
+import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
@@ -100,11 +108,22 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles
 import com.nothing.camera2magic.ui.util.horizontalCutoutPadding
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.window.WindowDialog
 
-private enum class MediaMode { PHOTO, VIDEO }
+private enum class MediaMode { PHOTO, VIDEO, NETWORK }
 
 private fun mediaModeOf(value: String): MediaMode =
-    if (value == "video") MediaMode.VIDEO else MediaMode.PHOTO
+    when (value) {
+        "video" -> MediaMode.VIDEO
+        "network" -> MediaMode.NETWORK
+        else -> MediaMode.PHOTO
+    }
+
+/** 网络流只接受这些协议；rtmp 之类 ExoPlayer 没有对应模块，不要放进来。 */
+private val StreamUrlSchemes = listOf("rtsp://", "rtsps://", "http://", "https://")
+
+private fun isSupportedStreamUrl(url: String): Boolean =
+    StreamUrlSchemes.any { url.startsWith(it, ignoreCase = true) }
 
 /** 一份媒体配置的位置：哪个镜头槽、哪种媒体模式。 */
 private data class MediaTarget(val slot: LensSlot, val mode: MediaMode)
@@ -134,6 +153,7 @@ fun AppConfigScreen(
     }
     var photoUri by remember(mediaSlot) { mutableStateOf(repository.getAppPhotoUri(mediaSlot, packageName)) }
     var videoUri by remember(mediaSlot) { mutableStateOf(repository.getAppVideoUri(mediaSlot, packageName)) }
+    var streamUrl by remember(mediaSlot) { mutableStateOf(repository.getAppStreamUrl(mediaSlot, packageName)) }
     var photoDisplayPath by remember(mediaSlot) { mutableStateOf<String?>(null) }
     var videoDisplayPath by remember(mediaSlot) { mutableStateOf<String?>(null) }
 
@@ -179,6 +199,8 @@ fun AppConfigScreen(
                     when (target.mode) {
                         MediaMode.PHOTO -> repository.setAppRemotePhoto(target.slot, packageName, fileName)
                         MediaMode.VIDEO -> repository.setAppRemoteVideo(target.slot, packageName, fileName)
+                        // 不可达：网络流不拷贝文件，URL 直接落键
+                        MediaMode.NETWORK -> Unit
                     }
                 } else if (current) {
                     when (target.mode) {
@@ -192,6 +214,8 @@ fun AppConfigScreen(
                             repository.setAppVideoUri(target.slot, packageName, null)
                             if (target.slot == mediaSlot) videoUri = null
                         }
+                        // 不可达：网络流没有远程文件要回滚
+                        MediaMode.NETWORK -> Unit
                     }
                     Toast.makeText(context, context.getString(R.string.app_config_media_copy_failed), Toast.LENGTH_SHORT).show()
                 }
@@ -215,6 +239,8 @@ fun AppConfigScreen(
                 videoUri = uri.toString()
                 repository.setAppVideoUri(target.slot, packageName, uri.toString())
             }
+            // 不可达：网络流不走相册选择器
+            MediaMode.NETWORK -> Unit
         }
         copyToRemote(uri, target)
     }
@@ -241,6 +267,8 @@ fun AppConfigScreen(
                 repository.setAppVideoUri(target.slot, packageName, null)
                 videoUri = null
             }
+            // 不可达：网络流没有远程文件要删，清空走 onStreamUrlChange(null)
+            MediaMode.NETWORK -> Unit
         }
     }
 
@@ -347,6 +375,11 @@ fun AppConfigScreen(
                             if (it == null) clearMedia(MediaTarget(mediaSlot, MediaMode.VIDEO))
                             else { videoUri = it; repository.setAppVideoUri(mediaSlot, packageName, it) }
                         },
+                        streamUrl = streamUrl,
+                        onStreamUrlChange = {
+                            repository.setAppStreamUrl(mediaSlot, packageName, it)
+                            streamUrl = it
+                        },
                         pendingTarget = pendingTarget,
                         onPickMedia = { mode ->
                             pendingTarget = MediaTarget(mediaSlot, mode)
@@ -355,6 +388,8 @@ fun AppConfigScreen(
                                     when (mode) {
                                         MediaMode.PHOTO -> ActivityResultContracts.PickVisualMedia.ImageOnly
                                         MediaMode.VIDEO -> ActivityResultContracts.PickVisualMedia.VideoOnly
+                                        // 不可达：网络流没有相册选择器；仅为 when 穷尽
+                                        MediaMode.NETWORK -> ActivityResultContracts.PickVisualMedia.ImageOnly
                                     }
                                 )
                             )
@@ -388,12 +423,16 @@ private fun AppConfigInner(
     videoUri: String?,
     videoDisplayPath: String?,
     onVideoUriChange: (String?) -> Unit,
+    streamUrl: String?,
+    onStreamUrlChange: (String?) -> Unit,
     pendingTarget: MediaTarget?,
     onPickMedia: (MediaMode) -> Unit,
 ) {
     val resolver = LocalAppIconResolver.current
     val iconPack = LocalThemeConfig.current.iconPack
     val iconSizePx = with(LocalDensity.current) { 48.dp.roundToPx() }
+    var showStreamDialog by remember { mutableStateOf(false) }
+    var streamDraft by remember { mutableStateOf("") }
     Column {
         Card(
             modifier = Modifier
@@ -458,8 +497,9 @@ private fun AppConfigInner(
             val list = listOf(
                 stringResource(R.string.app_config_photo),
                 stringResource(R.string.app_config_video),
+                stringResource(R.string.app_config_network),
             )
-            val modes = listOf(MediaMode.PHOTO, MediaMode.VIDEO)
+            val modes = listOf(MediaMode.PHOTO, MediaMode.VIDEO, MediaMode.NETWORK)
             val selectedIndex = modes.indexOf(mediaMode)
             // 镜头槽位固定两个：后置多颗镜头在多数机型上被聚合成同一个逻辑相机，
             // 变焦时由 HAL 内部换镜头（不重开相机）——按物理镜头分槽在机型间语义不一致
@@ -539,6 +579,95 @@ private fun AppConfigInner(
                     }
                 }
             }
+
+            AnimatedVisibility(
+                visible = mediaMode == MediaMode.NETWORK,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                ArrowPreference(
+                    title = stringResource(R.string.app_config_stream_url),
+                    summary = streamUrl ?: stringResource(R.string.app_config_no_media),
+                    onClick = {
+                        streamDraft = streamUrl ?: ""
+                        showStreamDialog = true
+                    },
+                    holdDownState = showStreamDialog,
+                    endActions = {
+                        if (streamUrl != null) {
+                            IconButton(onClick = { onStreamUrlChange(null) }) {
+                                Icon(MiuixIcons.Delete, contentDescription = null, tint = colorScheme.onSurfaceVariantActions)
+                            }
+                        }
+                    },
+                )
+            }
+            StreamUrlDialog(
+                show = showStreamDialog,
+                url = streamDraft,
+                onUrlChange = { streamDraft = it },
+                onDismiss = { showStreamDialog = false },
+                onConfirm = { url ->
+                    onStreamUrlChange(url)
+                    showStreamDialog = false
+                },
+            )
+        }
+    }
+}
+
+/**
+ * 网络流地址输入弹窗。空地址不允许确认；协议不合法时禁用确认并给提示。
+ * 按钮顺序与权重遵循 UI 规范（cancel | confirm）。
+ */
+@Composable
+private fun StreamUrlDialog(
+    show: Boolean,
+    url: String,
+    onUrlChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    val trimmed = url.trim()
+    val valid = isSupportedStreamUrl(trimmed)
+    WindowDialog(
+        show = show,
+        title = stringResource(R.string.app_config_stream_url),
+        summary = stringResource(R.string.app_config_stream_url_summary),
+        onDismissRequest = onDismiss,
+    ) {
+        TextField(
+            value = url,
+            onValueChange = onUrlChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+        )
+        if (url.isNotEmpty() && !valid) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.app_config_stream_url_invalid),
+                fontSize = textStyles.body2.fontSize,
+                color = StatusColors.danger,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(
+                text = stringResource(R.string.common_cancel),
+                modifier = Modifier.weight(1f),
+                onClick = onDismiss,
+            )
+            TextButton(
+                text = stringResource(R.string.common_confirm),
+                modifier = Modifier.weight(1f),
+                enabled = valid,
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+                onClick = { onConfirm(trimmed) },
+            )
         }
     }
 }

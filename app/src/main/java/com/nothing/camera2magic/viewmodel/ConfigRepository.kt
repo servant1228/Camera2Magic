@@ -312,6 +312,13 @@ class ConfigRepository(private val prefs: SharedPreferences) {
     fun setAppRemoteVideo(slot: LensSlot, packageName: String, fileName: String?) =
         save(LensKeys.remoteVideo(slot, packageName), fileName)
 
+    // 网络视频流：URL 直接双写本地 + 远程 prefs，不需要文件拷贝（它本来就是字符串）
+    fun getAppStreamUrl(slot: LensSlot, packageName: String): String? =
+        prefs.getString(LensKeys.streamUrl(slot, packageName), null)
+
+    fun setAppStreamUrl(slot: LensSlot, packageName: String, url: String?) =
+        save(LensKeys.streamUrl(slot, packageName), url)
+
     /** 该远程文件名是否还被任一槽位引用（迁移后两槽可能指向同一个文件，删除前必须判）。 */
     fun isRemoteMediaReferenced(fileName: String, packageName: String): Boolean =
         LensSlot.entries.any {

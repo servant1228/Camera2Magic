@@ -9,8 +9,8 @@ plugins {
 
 // 版本控制变量 version for camera3
 def majorVersion = 2
-def minorVersion = 3
-def patchVersion = 0
+def minorVersion = 4
+def patchVersion = 5
 def versionCodeOffset = 0 // 保持与旧版本兼容的偏移量
 
 def getGitCommitCount = { ->
@@ -269,6 +269,7 @@ dependencies {
     implementation libs.androidx.lifecycle.viewmodel.compose
     implementation libs.androidx.lifecycle.viewmodel.ktx
     implementation libs.androidx.media3.exoplayer
+    implementation libs.androidx.media3.exoplayer.rtsp
 
     implementation libs.miuix.ui
     implementation libs.miuix.squircle

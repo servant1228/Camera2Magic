@@ -198,4 +198,63 @@ class SourceManagerTest {
         assertFalse(SourceManager.appEnabled)
         assertFalse(SourceManager.readyForHook)
     }
+
+    @Test
+    fun networkModeResolvesToStreamUrl() {
+        val pkg = "com.example.net"
+        val url = "rtsp://192.168.1.10:8554/live"
+        val prefs = seed(
+            pkg,
+            mapOf(
+                LensKeys.migrated(pkg) to true,
+                LensKeys.mediaMode(LensSlot.BACK, pkg) to "network",
+                LensKeys.streamUrl(LensSlot.BACK, pkg) to url,
+            ),
+        )
+
+        val media = reload(pkg, prefs, LensSlot.BACK)
+        assertEquals(MagicType.NETWORK_STREAM, media?.type)
+        // URL 就存在 ValidMedia.file 里（与本地媒体的远程文件名同一字段）
+        assertEquals(url, media?.file)
+        assertTrue(SourceManager.readyForHook)
+    }
+
+    @Test
+    fun networkModeWithoutUrlDoesNotResurrectLegacyMedia() {
+        val pkg = "com.example.netempty"
+        val prefs = seed(
+            pkg,
+            mapOf(
+                // 未迁移的旧版共享媒体：两槽都能回退到它
+                "app_media_mode_$pkg" to "video",
+                "app_remote_video_$pkg" to "video.$pkg.mp4",
+                // 这一槽显式选了网络流，但还没填地址
+                LensKeys.mediaMode(LensSlot.BACK, pkg) to "network",
+            ),
+        )
+
+        // 模式键已显式存在 = 整槽已配置：URL 为空就是 null，绝不能回退到旧视频
+        assertNull(reload(pkg, prefs, LensSlot.BACK))
+        // 另一槽没碰过，仍然按旧语义共用旧媒体
+        assertEquals(MagicType.LOCAL_VIDEO, reload(pkg, prefs, LensSlot.FRONT)?.type)
+    }
+
+    @Test
+    fun streamSlotDoesNotBorrowFromOtherSlot() {
+        val pkg = "com.example.netperslot"
+        val url = "http://example.com/live.m3u8"
+        val prefs = seed(
+            pkg,
+            mapOf(
+                LensKeys.migrated(pkg) to true,
+                LensKeys.mediaMode(LensSlot.FRONT, pkg) to "network",
+                LensKeys.streamUrl(LensSlot.FRONT, pkg) to url,
+            ),
+        )
+
+        assertEquals(MagicType.NETWORK_STREAM, reload(pkg, prefs, LensSlot.FRONT)?.type)
+        // 后置没配：必须是没媒体（透传真实画面），不能借用前置的流
+        assertNull(reload(pkg, prefs, LensSlot.BACK))
+        assertFalse(SourceManager.readyForHook)
+    }
 }
