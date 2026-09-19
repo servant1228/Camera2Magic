@@ -1,27 +1,38 @@
 package com.nothing.camera2magic.utils
 
 import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 
 /**
- * 宿主侧相机清点：**纯诊断展示**（主页只显示一个数字），不参与任何 Hook 门控或媒体选择。
+ * 宿主侧镜头清点：**纯诊断展示**（主页只显示一个数字），不参与任何 Hook 门控或媒体选择。
  *
- * 只数 `getCameraIdList()` 的 id 个数，不做任何分类或推断，理由有两条：
- * 1. 枚举本身不要求 CAMERA 权限，但一部分特征键是受限的（各机型的受限集合由 HAL 声明，
- *    运行时只能靠 `CameraCharacteristics.getKeysNeedingPermission()` 判定）——分类所需的
- *    数据在宿主侧本来就取不全；
- * 2. id 数不等于物理镜头数（多颗镜头会被聚合成同一个逻辑相机 id，各家暴露方式还不统一），
- *    所以「几颗镜头」「这个 id 里藏着谁」这类数字在这里给不出可靠答案，不如不给。
+ * 统计口径 = **前置 + 后置**（按 `LENS_FACING` 分类），即「App 真正会去打开的那几个镜头」。
+ * 不做「几颗物理镜头」的推断：多颗后置在多数机型上被聚合成同一个逻辑相机 id（见
+ * `Camera2Hooker` 的 `lens:` 日志里 `physical=[2,3]` 那种），id 数 ≠ 物理镜头数，
+ * 各家暴露方式也不统一，与其给个不准的数不如只给朝向分类这个可靠口径。
  *
- * 焦距级别的镜头识别必须留在目标进程里做（见 Camera2Hooker 的 `lens:` 日志：那边的查询
- * 发生在目标应用进程里，用的是它自己的身份，而相机类应用必然持有 CAMERA）。
+ * **`LENS_FACING` 是否可读由机型决定**：它属于各厂商在
+ * [CameraCharacteristics.getKeysNeedingPermission] 里自行声明的那批受限键，
+ * AOSP 并不保证它对无 CAMERA 权限的调用方开放。本模块**有意不申请 CAMERA**
+ * （见 AGENTS「权限面很窄」：对一个虚拟摄像头模块来说那本身就是检测指纹），
+ * 所以这里必须容忍读不到——读不到时返回 null，UI 显示 `—`，绝不猜。
+ * 需要按焦距做精确识别时走 Hook 侧（那边用目标应用身份，必然有 CAMERA）。
  */
 object CameraInventory {
 
-    /** 系统暴露给普通应用的相机 id 数量；枚举失败（设备策略禁用、无相机服务等）返回 null。 */
+    /**
+     * 前置 + 后置的镜头数。任一 id 的朝向读不到就整体返回 null（宁可显示 `—` 也不给半对的数字）；
+     * 枚举失败（设备策略禁用、无相机服务等）同样返回 null。
+     */
     fun count(context: Context): Int? = runCatching {
         val manager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
             ?: return@runCatching null
-        manager.cameraIdList.size
+        manager.cameraIdList.count { id ->
+            val facing = manager.getCameraCharacteristics(id)
+                .get(CameraCharacteristics.LENS_FACING) ?: return@runCatching null
+            facing == CameraCharacteristics.LENS_FACING_FRONT ||
+                facing == CameraCharacteristics.LENS_FACING_BACK
+        }
     }.getOrNull()
 }

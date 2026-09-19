@@ -85,7 +85,7 @@ groupedCardItems("scope", items = listOf(
 
 - **按钮顺序 `cancel | confirm`**，两个按钮各 `weight(1f)` + `Arrangement.spacedBy(8.dp)`，confirm 用 `ButtonDefaults.textButtonColorsPrimary()`。
 - **弹 Dialog 的入口行设 `holdDownState`**（dialog 打开期间保持按下态，MIUI 惯例），如 `ThemeSettingsScreen` 的 `ArrowPreference`。注意**该参数只存在于 `BasicComponent` 家族（`ArrowPreference` 等）与 `IconButton` 上，miuix `Card` 没有**——所以以 `Card` 作 Dialog 入口（`StatusSection` 的 Hook 模式卡）无法遵守这条，别去硬加参数。`AppConfigScreen` 那处 `holdDownState` 配的是 `OverlayListPopup`（弹出菜单）而不是 Dialog，同样是正确用法。
-- **单选弹窗**当前是 `WindowDialog` + `TextButton` 列表 + 确认按钮（`HookModeDialog`），选中行用 `textButtonColorsPrimary()` 高亮。它控制的 `main_hook_mode` 目前是死键（见 AGENTS.md 配置流），所以这个 Dialog 只是 UI 参照、不影响 Hook 行为。
+- **单选弹窗**当前是 `WindowDialog` + `TextButton` 列表 + 确认按钮（`HookModeDialog`），选中行用 `textButtonColorsPrimary()` 高亮。**注：`HookModeDialog` 已随 `main_hook_mode` 死键一起删除**（首页同一位置换成了「镜头」只读计数卡，不再有弹窗），本段只保留单选弹窗的形态参照。
 - 弹层位置微调走 [ListPopupDefaults](../app/src/main/java/com/nothing/camera2magic/ui/component/ListPopupDefaults.kt)，不要在调用处手算 offset。它不只是「微调」：内含四角对齐分支、RTL 镜像与窗口边界钳制，唯一的字面量是 20.dp 起始边距。
 
 ## 颜色 token

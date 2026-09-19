@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nothing.camera2magic.R
 import com.nothing.camera2magic.ui.component.rememberConcentricCardRadius
@@ -44,6 +43,7 @@ fun DeviceInfoCard(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         lensCount = withContext(Dispatchers.IO) { CameraInventory.count(context) }
     }
+    // 朝向读不到时是 null（机型受限），统一显示 —（与 LSPosed 行同构）
     val cameraText = lensCount?.toString() ?: "—"
 
     Card(
@@ -74,18 +74,6 @@ fun DeviceInfoCard(modifier: Modifier = Modifier) {
             )
             Text(
                 text = systemInfo,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = stringResource(R.string.home_device_cameras),
-                fontSize = MiuixTheme.textStyles.main.fontSize,
-                fontWeight = FontWeight.Medium,
-                color = MiuixTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = cameraText,
                 fontSize = MiuixTheme.textStyles.body2.fontSize,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )

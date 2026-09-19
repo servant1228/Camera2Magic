@@ -191,10 +191,6 @@ class ConfigRepository(private val prefs: SharedPreferences) {
         get() = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
         set(value) = save("main_manually_rotate", value)
 
-    var hookMode: String
-        get() = prefs.getString("main_hook_mode", "Camera2") ?: "Camera2"
-        set(value) = save("main_hook_mode", value)
-
     var themeDarkMode: Int
         get() = prefs.getInt("theme_dark_mode", 0)
         set(value) = save("theme_dark_mode", value)

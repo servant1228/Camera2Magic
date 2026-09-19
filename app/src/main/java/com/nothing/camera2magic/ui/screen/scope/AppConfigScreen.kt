@@ -537,7 +537,7 @@ private fun AppConfigInner(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.app_config_select_photo), fontSize = textStyles.main.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
+                        Text(stringResource(R.string.app_config_photo), fontSize = textStyles.main.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
                         Text(
                             photoDisplayPath ?: photoUri ?: stringResource(R.string.app_config_no_media),
                             fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,
@@ -565,7 +565,7 @@ private fun AppConfigInner(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.app_config_select_video), fontSize = textStyles.main.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
+                        Text(stringResource(R.string.app_config_video), fontSize = textStyles.main.fontSize, fontWeight = FontWeight.Medium, color = colorScheme.onBackground)
                         Text(
                             videoDisplayPath ?: videoUri ?: stringResource(R.string.app_config_no_media),
                             fontSize = textStyles.body2.fontSize, color = colorScheme.onSurfaceVariantSummary,

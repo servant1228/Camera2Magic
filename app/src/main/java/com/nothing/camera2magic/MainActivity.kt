@@ -489,7 +489,6 @@ private fun HomePage(bottomPadding: Dp = 0.dp, onNavigateScope: () -> Unit = {})
             statusSection(
                 uiState = uiState,
                 scopeAppList = uiState.scopeAppList,
-                onHookModeSelected = { homeViewModel.onHookModeChanged(it) },
                 onNavigateScope = onNavigateScope,
             )
             item { DeviceInfoCard() }

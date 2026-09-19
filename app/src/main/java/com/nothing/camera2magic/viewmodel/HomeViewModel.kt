@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 @Immutable
 data class HomeUiState(
     val xposedActive: Boolean = false,
-    val hookMode: String = "Camera2",
     val versionName: String = BuildConfig.VERSION_NAME,
     val scopeAppList: List<String> = emptyList(),
     val isRefreshing: Boolean = false,
@@ -68,11 +67,6 @@ class HomeViewModel(
                 )
             }
         }
-    }
-
-    fun onHookModeChanged(mode: String) {
-        repository.hookMode = mode
-        _uiState.update { it.copy(hookMode = mode) }
     }
 
 }

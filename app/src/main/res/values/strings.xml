@@ -5,7 +5,7 @@
     <string name="home_device_system">System</string>
     <string name="home_device_lsposed">LSPosed</string>
     <string name="home_device_architecture">Architecture</string>
-    <string name="home_device_cameras">Cameras</string>
+    <string name="home_lens">Lens</string>
     <string name="nav_home">Home</string>
     <string name="nav_scope">Scope</string>
     <string name="nav_settings">Settings</string>
@@ -13,7 +13,6 @@
     <string name="home_status_inactive">Module Not Activated</string>
     <string name="home_status_inactive_hint">Enable the module in LSPosed first</string>
     <string name="home_status_empty_scope_hint">Module activated, but no app is in scope yet</string>
-    <string name="home_hook_mode">Hook Mode</string>
     <string name="quick_entry_play_sound">Play Sound</string>
     <string name="quick_entry_enable_log">Enable Log</string>
     <string name="quick_entry_inject_menu">Inject Menu</string>
@@ -94,10 +93,8 @@
     <string name="app_config_photo">Photo</string>
     <string name="app_config_video">Video</string>
     <string name="app_config_network">Network Stream</string>
-    <string name="app_config_select_photo">Select Photo</string>
-    <string name="app_config_select_video">Select Video</string>
     <string name="app_config_stream_url">Stream URL</string>
-    <string name="app_config_stream_url_summary">RTSP / HTTP(S)</string>
+    <string name="app_config_stream_url_summary">RTSP / HLS / DASH / HTTP(S)</string>
     <string name="app_config_stream_url_invalid">Only rtsp://, rtsps://, http:// and https:// are supported</string>
     <string name="app_config_no_media">Not selected</string>
     <string name="app_config_launch_app">Launch</string>
