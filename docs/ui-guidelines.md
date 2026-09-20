@@ -32,6 +32,8 @@ Compose / Miuix 相关的全部约定与踩坑约束。改 `app/src/main/java/co
   - 底部 inset **只能在一个地方施加**。`ScopeScreen` 的搜索结果列表曾同时在 LazyColumn 修饰符与末尾 Spacer 上加 `navigationBarsPadding()`，产生双倍留白——已收敛为只在末尾 Spacer 上加。
   - **已知偏差**：`AboutScreen` 与 `AppConfigScreen` 的末尾 Spacer 写在 `item {}` 内部而不是独立 item，且 `AppConfigScreen` 没有 24.dp 基线。
 - **二级页面签名禁止 `bottomPadding: Dp` 参数**——靠末尾 Spacer 自适应。**例外是主界面 Tab**（`HomePage` / `ScopePage` / `ScopeScreen` / `SettingsScreenContent`）：外层主 Scaffold 持有 bottomBar，必须接 `bottomPadding` 透传给 `contentPadding`。判断标准 = 页面是否被 Navigator push，不是「有没有列表」。当前三个二级页签名里都没有该参数，保持。
+- **主界面 3 Tab 的 `HorizontalPager` 用 miuix `Modifier.pagerGestureOverride(pagerState)`（默认 Cross-Axis 模式）**，让竖向列表惯性滚动/回弹期间仍能横滑切页；切页动画统一走 `PagerState.springAnimateToPage()`（`MainPagerState.animateToPage` 内部即此）。**Cross-Axis 的两个配套项必须成对保留**：`userScrollEnabled = false` 与 `pageNestedScrollConnection = PagerGestureNestedScrollConnection`，缺一个就会和 Pager 自带手势竞争（症状：切页失效或越界回弹异常）；要换回原生手势时两者得一起还原。
+- **二级页（push 出来的 `Route.*`）开启 miuix-nav 的 `entry(swipeDismiss = …)`**，内容侧滑即可返回上一页；方向是**物理方向、不随 RTL 镜像**，靠 `LocalLayoutDirection` 在 `LeftToRight`/`RightToLeft` 之间选。根 entry `Route.Main` 不设（无可 pop 目标）。
 
 ## 毛玻璃顶栏/底栏
 

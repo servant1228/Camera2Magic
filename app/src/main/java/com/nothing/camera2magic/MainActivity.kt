@@ -10,11 +10,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +47,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
@@ -64,6 +61,7 @@ import top.yukonga.miuix.kmp.nav.core.NavDisplay
 import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
+import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
@@ -128,9 +126,11 @@ import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.squircle.addSquircleRect
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.PagerGestureNestedScrollConnection
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.pagerGestureOverride
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import kotlin.math.abs
+import top.yukonga.miuix.kmp.utils.springAnimateToPage
 
 class MainActivity : ComponentActivity() {
 
@@ -266,6 +266,13 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
     val factory = LocalViewModelFactory.current
     val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
 
+    // 侧滑返回方向是物理方向、不随布局镜像：LTR 向右滑，RTL 向左滑。
+    val backSwipeDirection = if (LocalLayoutDirection.current == LayoutDirection.Rtl) {
+        NavSwipeDirection.RightToLeft
+    } else {
+        NavSwipeDirection.LeftToRight
+    }
+
     CompositionLocalProvider(LocalNavigator provides navigator) {
         NavDisplay(
             backStack = backStack,
@@ -278,7 +285,12 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                 val pagerContent: @Composable (Modifier, Dp) -> Unit = { pagerModifier, bottomPadding ->
                     HorizontalPager(
                         state = pagerState,
-                        modifier = pagerModifier,
+                        // Cross-Axis 拦截：竖向列表惯性滚动/回弹期间也能横滑切页。
+                        // 该模式必须同时把 userScrollEnabled 关掉、并接管 pageNestedScrollConnection，
+                        // 否则会与 Pager 自带手势竞争（见 miuix docs/guide/utils.md）。
+                        modifier = pagerModifier.pagerGestureOverride(pagerState),
+                        userScrollEnabled = false,
+                        pageNestedScrollConnection = PagerGestureNestedScrollConnection,
                         verticalAlignment = Alignment.Top,
                     ) { page ->
                         when (page) {
@@ -342,7 +354,7 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                 }
             }
 
-            entry<Route.ThemeSettings> {
+            entry<Route.ThemeSettings>(swipeDismiss = backSwipeDirection) {
                 ThemeSettingsScreen(
                     viewModel = settingsViewModel,
                     onThemeConfigChanged = onThemeConfigChanged,
@@ -351,7 +363,7 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                 )
             }
 
-            entry<Route.IconPackSettings> {
+            entry<Route.IconPackSettings>(swipeDismiss = backSwipeDirection) {
                 IconPackSettingsScreen(
                     viewModel = settingsViewModel,
                     onThemeConfigChanged = onThemeConfigChanged,
@@ -359,18 +371,18 @@ private fun AppNavigation(themeConfig: ThemeConfig, onThemeConfigChanged: (Theme
                 )
             }
 
-            entry<Route.About> {
+            entry<Route.About>(swipeDismiss = backSwipeDirection) {
                 AboutScreen(
                     onBack = { navigator.pop() },
                     onNavigateLicenses = { navigator.push(Route.Licenses) },
                 )
             }
 
-            entry<Route.Licenses> {
+            entry<Route.Licenses>(swipeDismiss = backSwipeDirection) {
                 LicensesScreen(onBack = { navigator.pop() })
             }
 
-            entry<Route.AppConfig> { key ->
+            entry<Route.AppConfig>(swipeDismiss = backSwipeDirection) { key ->
                 val context = LocalContext.current
                 val repository = LocalConfigRepository.current
                 val label = remember(key.packageName) {
@@ -530,28 +542,9 @@ private class MainPagerState(
         navJob = coroutineScope.launch {
             val myJob = coroutineContext.job
             try {
-                pagerState.scroll(MutatePriority.UserInput) {
-                    val distance = abs(targetIndex - pagerState.currentPage).coerceAtLeast(2)
-                    val duration = 100 * distance + 100
-                    val layoutInfo = pagerState.layoutInfo
-                    val pageSize = layoutInfo.pageSize + layoutInfo.pageSpacing
-                    val currentDistanceInPages =
-                        targetIndex - pagerState.currentPage - pagerState.currentPageOffsetFraction
-                    val scrollPixels = currentDistanceInPages * pageSize
-
-                    var previousValue = 0f
-                    animate(
-                        initialValue = 0f,
-                        targetValue = scrollPixels,
-                        animationSpec = tween(easing = EaseInOut, durationMillis = duration),
-                    ) { currentValue, _ ->
-                        previousValue += scrollBy(currentValue - previousValue)
-                    }
-                }
-
-                if (pagerState.currentPage != targetIndex) {
-                    pagerState.scrollToPage(targetIndex)
-                }
+                // miuix 的弹簧切页：内部用 MutatePriority.UserInput 接管 scroll，
+                // 用户手势可随时打断，且会在同一次 mutation 内收敛到目标页。
+                pagerState.springAnimateToPage(targetIndex)
             } finally {
                 if (navJob == myJob) {
                     isNavigating = false
