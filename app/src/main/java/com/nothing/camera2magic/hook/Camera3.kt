@@ -5,7 +5,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PorterDuff
+import android.graphics.Rect
 import android.graphics.SurfaceTexture
 
 import android.os.Handler
@@ -33,6 +35,7 @@ import com.nothing.camera2magic.utils.Dog
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 import com.nothing.camera2magic.hook.NativeBridge as NB
 import com.nothing.camera2magic.hook.SourceManager as SM
 
@@ -46,6 +49,9 @@ class Camera3 {
         // GL_MAX_TEXTURE_SIZE(4096)，避免 lockHardwareCanvas 超限静默失败变黑帧
         private const val FRAME_LONG_EDGE = 3840
         private const val FRAME_LONG_EDGE_LOW_RAM = 1920
+        // GL 纹理安全上限（保守取 GL_MAX_TEXTURE_SIZE 下限 4096）：解码图大于它时
+        // lockHardwareCanvas 拉图可能超限静默失败变黑帧，采样时退一档规避
+        private const val MAX_TEXTURE_EDGE = 4096
 
         // 帧重绘间隔 ≈30fps：仅驱动 OES 纹理持续更新，实际输出帧率由相机管线决定
         private const val FRAME_INTERVAL_MS = 33L
@@ -64,6 +70,9 @@ class Camera3 {
 
         private val camera3Handler = Camera3Extended.handler
 
+        // 替换帧缩放绘制画笔：静态图反复重绘，画笔复用避免每帧新建
+        private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
+
         private val context: Context get() = GlobalState.appContext
 
         @Volatile
@@ -81,6 +90,9 @@ class Camera3 {
         private var networkRetryCount = 0
         private var imageRendering: Boolean = false
         private var cachedBitmap: Bitmap? = null
+        // 输出到 Surface 的精确尺寸：解码图可能大于预算，真正缩放交给 GPU 绘制时完成
+        private var renderWidth: Int = 0
+        private var renderHeight: Int = 0
         private var oesTextureId: Int = 0
         private var surface: Surface? = null
         private var surfaceTexture: SurfaceTexture? = null
@@ -314,17 +326,34 @@ class Camera3 {
             }
 
             options.inJustDecodeBounds = false
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888
-            options.inSampleSize = calculateInSampleSize(options, frameLongEdge)
+            // 目标输出长边：原图不超过预算就保持原图，否则缩到预算。
+            // 原图尺寸解析失败（outWidth<=0）时退回默认预算，避免负值引发死循环
+            val srcLong = maxOf(options.outWidth, options.outHeight)
+            val dstLong = if (srcLong > 0) minOf(srcLong, frameLongEdge) else frameLongEdge
+            // HARDWARE 位图只在 GPU 上分配，替目标 App 省下 4 字节/像素的 CPU 内存；
+            // 个别设备/格式解码失败时回退 ARGB_8888
+            options.inPreferredConfig = Bitmap.Config.HARDWARE
+            options.inSampleSize = calculateInSampleSize(options, dstLong)
 
+            var bitmap = runCatching { BitmapFactory.decodeFileDescriptor(fd, null, options) }.getOrNull()
+            if (bitmap == null) {
+                Os.lseek(fd, 0, OsConstants.SEEK_SET)
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888
+                bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
+            }
+            val decoded = bitmap ?: throw IllegalStateException("decode image failed.")
 
-            val bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
-                ?: throw IllegalStateException("decode image failed.")
+            // 输出尺寸固定为精确的目标长边，像素缩放交给 GPU 绘制时完成：
+            // 既不额外分配一张全图，也避免 pow2 采样把 4000px 直接砍到 2000px
+            val longEdge = maxOf(decoded.width, decoded.height)
+            val outScale = if (longEdge > dstLong) dstLong.toFloat() / longEdge else 1f
+            renderWidth = (decoded.width * outScale).roundToInt().coerceAtLeast(1)
+            renderHeight = (decoded.height * outScale).roundToInt().coerceAtLeast(1)
 
-            NB.updateFrameInfo(bitmap.width, bitmap.height, 0)
+            NB.updateFrameInfo(renderWidth, renderHeight, 0)
             SM.applyManualRotationToNative()
-            surfaceTexture?.setDefaultBufferSize(bitmap.width, bitmap.height)
-            cachedBitmap = bitmap
+            surfaceTexture?.setDefaultBufferSize(renderWidth, renderHeight)
+            cachedBitmap = decoded
             imageRendering = true
             camera3Handler.post(imageRenderRunnable)
         }.onFailure { e ->
@@ -346,7 +375,13 @@ class Camera3 {
             val canvas = surface?.lockHardwareCanvas()// minSDK 26
             canvas?.let {
                 it.drawColor(Color.BLACK, PorterDuff.Mode.CLEAR)
-                it.drawBitmap(bitmap, 0f, 0f, null)
+                val dstW = if (renderWidth > 0) renderWidth else bitmap.width
+                val dstH = if (renderHeight > 0) renderHeight else bitmap.height
+                if (dstW == bitmap.width && dstH == bitmap.height) {
+                    it.drawBitmap(bitmap, 0f, 0f, null)
+                } else {
+                    it.drawBitmap(bitmap, null, Rect(0, 0, dstW, dstH), bitmapPaint)
+                }
             }
             surface?.unlockCanvasAndPost(canvas)
         }
@@ -391,14 +426,14 @@ class Camera3 {
         onPlayerStateChangeListener?.invoke(state)
     }
 
-    private fun calculateInSampleSize(options: BitmapFactory.Options, maxLongEdge: Int): Int {
-        // 旧实现按 reqWidth/reqHeight 双边收紧且循环条件要求两个半边都 >= 预算，
-        // 只有竖图真正受限：横图（高 < 2×reqHeight）一律 inSampleSize=1 全尺寸解码
-        // （4000×3000 = 48MB）。改为按长边对称收紧，语义「不超过」：pow2 粒度最坏
-        // 落到预算一半，但绝不超限、绝不放大小图
+    private fun calculateInSampleSize(options: BitmapFactory.Options, targetLongEdge: Int): Int {
+        // 取「解码后长边不小于目标」的最大 2 次幂：旧实现按「不超过」收紧，pow2
+        // 粒度会把 4000px 图直接砍到 2000px（预算 3840 却掉一半分辨率）。
+        // 但解码图超过 GL 纹理安全上限时必须退一档，避免绘制超限失败。
         val longEdge = maxOf(options.outWidth, options.outHeight)
         var inSampleSize = 1
-        while (longEdge / inSampleSize > maxLongEdge) inSampleSize *= 2
+        while (longEdge / (inSampleSize * 2) >= targetLongEdge) inSampleSize *= 2
+        if (longEdge / inSampleSize > MAX_TEXTURE_EDGE) inSampleSize *= 2
         return inSampleSize
     }
 
