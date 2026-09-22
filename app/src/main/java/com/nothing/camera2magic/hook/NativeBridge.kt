@@ -3,38 +3,18 @@
 package com.nothing.camera2magic.hook
 
 import android.graphics.SurfaceTexture
-import android.hardware.Camera
 import android.view.Surface
-import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 
+/**
+ * JNI 契约单点。原生侧在 [JNI_OnLoad] 里用 RegisterNatives 绑定同一张表
+ * （见 `app/src/main/cpp/native_bridge.cpp`），**任何签名改动都必须两侧一起**，
+ * 否则不是编译错误而是运行期 `UnsatisfiedLinkError`。
+ */
 object NativeBridge {
-    @Volatile
-    private var cachedBuffer: ByteArray? = null
-    @Volatile
-    var currentCamera: WeakReference<Camera>? = null
-    @Volatile
-    var previewCallback: WeakReference<Camera.PreviewCallback>? = null
-
+    /** 原生日志门控。历史实现无视模块日志开关、常开输出指纹，现在与 `main_enable_log` 同步。 */
     @JvmStatic
-    fun ensureBuffer(size: Int): ByteArray {
-        if (cachedBuffer != null && cachedBuffer!!.size == size) {
-            return cachedBuffer!!
-        }
-        return ByteArray(size).also { cachedBuffer = it }
-    }
-
-    @JvmStatic
-    fun frameUpdated(width: Int, height: Int) {
-        val buffer = cachedBuffer ?: return
-        val expectedSize = width * height * 3 / 2
-        if (buffer.size < expectedSize) return
-        runCatching {
-            val camera = currentCamera?.get() ?: return
-            val callback = previewCallback?.get() ?: return
-            callback.onPreviewFrame(buffer, camera)
-        }
-    }
+    external fun setLogEnabled(enabled: Boolean)
 
     @JvmStatic
     external fun createOESTexture(): Int
@@ -61,13 +41,21 @@ object NativeBridge {
     external fun updateAlgorithmSize(width: Int, height: Int)
     @JvmStatic
     external fun updateFrameInfo(width: Int, height: Int, rotation: Int)
-    @JvmStatic
-    external fun overwriteYuvBuffer(originBuffer: ByteArray)
 
+    /** 把当前替换帧按指定尺寸写成 NV21（Camera1 的 onPreviewFrame 缓冲）。 */
+    @JvmStatic
+    external fun overwriteYuvBuffer(originBuffer: ByteArray, width: Int, height: Int)
+
+    /** 把当前替换帧写进 Camera2 的 YUV_420_888 三个平面（保留原 stride）。 */
     @JvmStatic
     external fun overwriteYuvBuffer(yBuffer: ByteBuffer, yRowStride: Int, yPixelStride: Int,
                                     uBuffer: ByteBuffer, uRowStride: Int, uPixelStride: Int,
                                     vBuffer: ByteBuffer, vRowStride: Int, vPixelStride: Int)
+
+    /**
+     * 把当前替换帧按拍照尺寸编码成 JPEG（含 EXIF Orientation）。
+     * 无帧源 / 编码失败时返回 null，调用方应退回原始相机 JPEG。
+     */
     @JvmStatic
-    external fun overwriteJPEGBytes(quality: Int = 90): ByteArray
+    external fun overwriteJPEGBytes(quality: Int = 90): ByteArray?
 }

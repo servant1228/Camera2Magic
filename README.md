@@ -9,6 +9,9 @@
 Camera2 Magic 是一个基于 **LSPosed / libxposed（API 102）** 的 Android 虚拟摄像头模块：当被 Hook 的应用调用
 Camera1 / Camera2 / ImageReader / WebRTC 等路径请求摄像头时，用你在该应用配置中选择的照片或视频替换真实画面。
 
+原生渲染核心（`libcamera3.so`）为本仓库自研：自带 EGL/GLES3 渲染线程与 JPEG 编码器，只依赖系统库，
+不再使用原项目的闭源预编译产物；源码与设计说明见 [app/src/main/cpp](app/src/main/cpp/README.md)。
+
 ## 特性
 
 - 摄像头替换
@@ -53,5 +56,5 @@ adb logcat -s VCX:*
 ## 声明
 
 - 本项目基于 [Atomos-X/Camera2Magic](https://github.com/Atomos-X/Camera2Magic) 二次开发，原项目未附带 License，使用与分发请自行确认合规；
-- 原生库 `libcamera3.so` 为预编译闭源产物，源码不在本仓库内；
+- 原生库 `libcamera3.so` 为**本仓库自研实现**（源码在 [app/src/main/cpp](app/src/main/cpp/)，不再依赖原项目的闭源产物）；
 - 本模块仅供学习交流，请勿用于任何违法或违规用途；由此产生的任何后果由使用者自行承担。

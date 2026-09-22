@@ -1,6 +1,6 @@
 # Camera2 Magic
 
-LSPosed / libxposed（API 102）的 Android 虚拟摄像头模块。单模块 `:app`（`com.android.application`），基于 [Atomos-X/Camera2Magic](https://github.com/Atomos-X/Camera2Magic) 二次开发。UI 用 Compose + Miuix；核心是一个 **预编译闭源 `libcamera3.so`**（源码不入库），Hook 引擎运行在**目标应用进程内**。
+LSPosed / libxposed（API 102）的 Android 虚拟摄像头模块。单模块 `:app`（`com.android.application`），基于 [Atomos-X/Camera2Magic](https://github.com/Atomos-X/Camera2Magic) 二次开发。UI 用 Compose + Miuix；核心是**自研原生渲染引擎 `libcamera3.so`**（源码在 `app/src/main/cpp/`，见该目录 [README](app/src/main/cpp/README.md)），Hook 引擎运行在**目标应用进程内**。
 
 本文件是 agent 指南的入口。只在特定改动里才需要的约束拆了出去，**按需读、不自动加载**：[docs/ui-guidelines.md](docs/ui-guidelines.md)（改 `ui/` 下任何文件前）。其余长期约束都在本文件。能从文件名与签名读出的信息不复述，这里只写约束、根因与症状指纹。
 
@@ -37,7 +37,8 @@ app/src/main/java/com/nothing/camera2magic/
 app/src/test/java/.../ui/screen/home/ModuleStatusTest.kt      # 纯 JVM，2 个用例
 app/src/test/java/.../hook/SourceManagerTest.kt              # 纯 JVM，镜头槽位媒体解析
 app/src/main/resources/META-INF/xposed/   # module.prop / java_init.list / native_init.list / scope.list
-app/src/main/jniLibs/arm64-v8a/libcamera3.so   # 预编译闭源产物（需提交进仓库）
+app/src/main/cpp/                              # 自研原生引擎源码（引擎/JPEG 编码器/JNI 桥/局部 GL ABI 声明）
+app/src/main/jniLibs/arm64-v8a/libcamera3.so   # buildNative 产物（需提交进仓库）
 ```
 
 `Route` 有 5 个成员，但 `Route.Main` 内部是 3 个 tab 页的 pager，所以实际是 7 个页面。各 Hooker 的职责能从文件名读出，但**装配点不在 `HookManager`**——那是只提供 `safeHook`/`hookedClasses` 的 mixin 接口，真正 new 四个 Hooker 的地方是 `MagicHook.onPackageReady`。
@@ -66,6 +67,8 @@ MainActivity → CompositionLocal         MagicHook.onPackageReady(param)
 
 **`.so` 被加载两次，两条路都必需**：`native_init.list` 里的 `camera3` 供 LSPosed 做原生初始化，`MagicHook` 的 `init { System.loadLibrary("camera3") }` 供 JNI 符号绑定。看着冗余，删掉任一条都有一半概率整模块失效。
 
+**原生引擎（app/src/main/cpp/，细节见该目录 README）**：单例 + 独立渲染线程持 EGL/GLES3 上下文；Kotlin 的 `Camera3` 把所选媒体画进 `SurfaceTexture` 并每帧通知原生渲染，原生把同一帧画到全部已注册 `ANativeWindow`（预览），并按需把当前帧渲染成 NV21 供 YUV/JPEG 消费。反汇编确认与旧闭源库的兼容点：预览的 fix 矩阵作用在**顶点**上（`gl_Position = u_FixMatrix * a_Position`，用于旋转/镜像/中心裁剪），YUV 的 fix 矩阵作用在**纹理坐标**上（带 0.5 中心平移），两者不可互换；按应用的旋转豁免表（WhatsApp、微信小程序 `com.tencent.mm:a`、Telegram、Instagram）与 Camera1 的 `displayOri % 180 == 90` 目标朝向分支必须保留，这是多款实机 app 的唯一验证依据，没有测试数据前不要"优化"。**媒体方向对齐已在 `.so` 内自动完成**：`alignSensorOrientation()` 按 `sensorOri + 媒体宽高比 + 媒体自身旋转`（视频 `unappliedRotationDegrees` / 图片 EXIF，经 `updateFrameInfo` 第三参传入）把竖屏媒体转进横屏传感器布局，因此 UI 的「手动旋转」默认应为 0；用户把它设成非 0 是在叠加额外偏移（旧版靠手动旋转补偿竖屏媒体的 90°，升级后不改回去会双倍旋转）。修改 C++ 后必须 `buildNative` 重编并提交 jniLibs，否则 APK 里仍是旧 .so。
+
 ### 配置流
 
 - `ConfigRepository.save()` 双写本地 prefs 与 remote prefs；XposedService 绑定成功后 `syncAllToRemote()` 把本地全部键整体重推一次（覆盖 LSPosed 重装 / 数据被清的场景）。**远程写在 `safeExecute` 里，service 未绑定时静默跳过、无日志**——此时是纯本地写，靠 `syncAllToRemote()` 补齐。
@@ -88,7 +91,7 @@ MainActivity → CompositionLocal         MagicHook.onPackageReady(param)
 - **宿主专用键**：槽位版 `app_photo_uri_<slot>_<pkg>` / `app_video_uri_<slot>_<pkg>` 只供 UI 展示原始 URI，Hook 侧读的是 `app_remote_*`。另外全部 12 个 `theme_*` 键也会被全量推到远程组里（`save`/`syncAllToRemote` 不按键过滤），Hook 侧忽略。
 - **旧的不分镜头媒体键是只读遗留**：`ConfigRepository` 里只剩 getter，供 `migrateLensMediaIfNeeded()`（应用配置页进入时跑一次，标记键 `app_lens_migrated_<pkg>`）把旧值展开成前置/后置两份**并清空旧键**；它用 `saveBatch()` 一次本地 edit + 一次远程 edit，不是逐键 `save()`（迁移有成组十几个键，逐个 save 会在页面组装期抖十几次 binder）。清旧键是语义必需而不是美化：留着它，用户删掉某槽的媒体后 Hook 侧的回退链会把旧画面「复活」。**Hook 侧的回退开关是 `app_lens_migrated_<pkg>` 这个标记、不是「旧键还在不在」**：本地清旧键时若 service 未绑定，远程写会被静默跳过，而 `syncAllToRemote()` 只补写不删除——陈 key 会永久留在远程组里，拿它做判定等于把用户删掉的媒体放回来。**别给旧键重新加 setter**——迁移后槽位键会遮蔽它，写了不生效。
 - **持久化类型陷阱**：布尔/数值键的存储类型分两派——`main_play_sound`/`main_enable_log`/`main_show_toast`/`main_inject_menu`/`app_hook_<pkg>`/`app_lens_migrated_<pkg>`/`theme_predictive_back` 以 **Boolean** 存，`main_manually_rotate`/`theme_dark_mode` 以 **Int** 存；其余布尔/数值键（`theme_pure_black`/`theme_monet`/`theme_blur`/`theme_floating_bottom_bar`/`theme_density_scale` 等）以 **String** 存。读写都走 ConfigRepository 的属性就安全，别绕过它直接碰 prefs。唯一合法的例外是 `MainActivity.onCreate` 直读 `theme_predictive_back`——它必须早于 Compose 执行。
-- `main_manually_rotate` 的实时生效靠 Hook 侧 `SourceManager.registerRotationListener()`（只筛这一个键 → `refreshPrefs()` + `applyManualRotationToNative()`）。listener 必须用字段强引用持住，SharedPreferences 只弱引用它。
+- `main_manually_rotate` 与 `main_play_sound` 的实时生效靠 Hook 侧 `SourceManager.registerPreferenceListener()`（按 key 分发：旋转 → `refreshPrefs()` + `applyManualRotationToNative()`；声音 → `refreshPrefs()` + `Camera3().setPlaySound()` 直接改 ExoPlayer 音量）。**音频不属于 `.so`**：`.so` 只拿 SurfaceTexture 的画面帧，媒体解封装/音频解码/播放都在 Kotlin 的 ExoPlayer，所以这类开关的实时生效也只能在 Kotlin 侧做。listener 必须用字段强引用持住，SharedPreferences 只弱引用它。
 - **备份会造成两侧失同步**：manifest 里 `allowBackup=true`，本地 prefs 可被系统备份、远程 prefs 不行；恢复后要到下一次 `syncAllToRemote()` 才对齐。
 
 ### Hook 拦截纪律
@@ -127,7 +130,7 @@ MainActivity → CompositionLocal         MagicHook.onPackageReady(param)
 - **ImageReader 的 JPEG 替换（format 256）只对 `LOCAL_IMAGE` 生效**：视频 / 网络流没有「一张图」可解，且网络流的 file 是 URL，传给 `openRemoteFile` 会去开非法文件名，所以入口显式判类型直接透传（视频/流的替换帧由 native 引擎在 Camera1 拍照路径与 YUV 路径提供）。
 - 视频 `REPEAT_MODE_ALL` 循环播放，`playSound=false` 时 volume=0；图片模式用 `lockHardwareCanvas` 重绘循环，间隔 `FRAME_INTERVAL_MS`=33ms（≈30fps）；解码按长边预算 `FRAME_LONG_EDGE` 收紧（4K 设备 3840，`isLowRamDevice` 降 1920），横竖对称、pow2 粒度最坏落到预算一半，小图绝不放大。绘制整体包在 `runCatching` 里且**不记日志**，掉帧是静默的。ExoPlayer 经 [MagicDataSource](app/src/main/java/com/nothing/camera2magic/hook/MagicDataSource.kt) 读 PFD（支持 seek；`open` 时 `ParcelFileDescriptor.dup` 私有副本、`close` 只关副本，原始 fd 所有权在 `releaseResources`；并发读各持各的偏移，不再互踩）。
 - **手动旋转的正确路径**：`SourceManager.rememberCameraBaseData()` 记录最近一次 base data → `applyManualRotationToNative()` 重发 `updateCameraBaseData`。注意两个字段处理方式不同：`sensorOri` 是**叠加**（`(base + manual) % 360`，影响预览角 + YUV 旋转），`displayOri` 是**整体替换**成手动角度（影响 Camera1 宽高交换）。`main_manually_rotate` 存的是**索引 0..3** 不是角度。`applyManualRotationToNative()` 开头 `if (!baseDataSet) return`，所以 `Camera3` 里那两个调用点在没有任何相机 open 过时是静默空操作。**改旋转逻辑不要只调 `NB.updateManualRotation`**——那条路只有 WebRTC 自动旋转在用，且会被手动值覆盖。
-- **JNI 契约单点 = [NativeBridge.kt](app/src/main/java/com/nothing/camera2magic/hook/NativeBridge.kt)，而且是双向的**：`.so` 闭源且源码不入库，新增 `external fun` 必须在本机维护 cpp 源码重新编译并更新 jniLibs，否则运行期 `UnsatisfiedLinkError`。**更危险的是反方向**——`ensureBuffer` / `frameUpdated` / `currentCamera` / `previewCallback` 在 Kotlin 侧没有任何调用者，它们纯粹是 native 的上行回调目标与可写字段；改名或被 shrink 掉**不会报错**，只是功能静默消失（`frameUpdated` 在这两个弱引用字段为空时直接 return）。[proguard-rules.pro](app/proguard-rules.pro) 只有两条规则且**禁止修改**：`-keepclasseswithmembernames class * { native <methods>; }` 保住 native 方法名，`-keep class com.nothing.camera2magic.** { *; }` 保住本模块全部类与成员（含 `MagicHook` 入口与上述上行字段）。注意后者只覆盖**本模块自己的包**，库代码照常被 shrink/混淆。
+- **JNI 契约单点 = [NativeBridge.kt](app/src/main/java/com/nothing/camera2magic/hook/NativeBridge.kt)，而且是双向的**：原生实现是仓库内的 `app/src/main/cpp/native_bridge.cpp`（`JNI_OnLoad` + `RegisterNatives` 的 `kNativeMethods` 表），修改任何 `external fun` 必须**两侧同改**，否则不是编译错误而是运行期 `UnsatisfiedLinkError`。[proguard-rules.pro](app/proguard-rules.pro) 只有两条规则且**禁止修改**：`-keepclasseswithmembernames class * { native <methods>; }` 保住 native 方法名，`-keep class com.nothing.camera2magic.** { *; }` 保住本模块全部类与成员（含 `MagicHook` 入口）。注意后者只覆盖**本模块自己的包**，库代码照常被 shrink/混淆。旧库那批 `ensureBuffer` / `frameUpdated` / `currentCamera` / `previewCallback` 上行回调字段已被删除：反汇编确认旧 `.so` 从未引用它们，是上游遗留死代码。
 
 ## 关键架构约束
 
@@ -144,17 +147,21 @@ MainActivity → CompositionLocal         MagicHook.onPackageReady(param)
 ## 构建
 
 ```powershell
-.\gradlew.bat assembleDebug            # 常规验证：直接用 jniLibs 预编译 .so
+.\gradlew.bat assembleDebug            # 常规验证：直接用 jniLibs 里已提交的 .so（不重编 native）
 .\gradlew.bat :app:compileDebugKotlin  # 最快语法/类型检查
 .\gradlew.bat :app:testDebugUnitTest   # 两个纯 JVM 单测
-.\gradlew.bat buildNative              # 仅本机存在 app/src/main/cpp/ 时可用（见下）
+.\gradlew.bat buildNative              # 重编 app/src/main/cpp/ → strip → 同步 jniLibs（发版前必跑）
 ```
 
-- **`hasNativeSource` 门控一切原生逻辑**：`app/src/main/cpp/CMakeLists.txt` 不存在（`.gitignore` 忽略了整个 cpp 目录，公开仓库克隆即如此）时，CMake 不配置、快速编译模式启用、**`buildNative` 任务根本不注册**——报「任务不存在」不是环境坏了，是没有源码。有源码时 `buildNative` 删 jniLibs/release/.cxx → 依赖 strip 任务把 stripped 产物拷回 jniLibs（`upToDateWhen false`，永远真跑）。
+- **`hasNativeSource` 门控一切原生逻辑**：原生源码已入库（`app/src/main/cpp/CMakeLists.txt` 必定存在），但
+  `buildNative` 之外的构建仍走**快速编译模式**：CMake/Strip 任务被禁用、直接用 `jniLibs` 里已提交的 `.so`，
+  所以改 C++ 后必须跑 `buildNative` 才会进 APK。有源码时 `buildNative` 删 jniLibs/release/.cxx → 依赖 strip
+  任务把 stripped 产物拷回 jniLibs（`upToDateWhen false`，永远真跑）。Termux 上可用
+  `app/src/main/cpp/build_local.sh` 做纯语法/链接自检（不产出行使 `buildNative` 的 strip 流程）。
 - **`cleanOldJniLibs` 必须排在 merge 任务之前**：buildNative 自己的 doFirst 删除时机太晚（发生在依赖任务之后），不前置删除的话 `mergeReleaseNativeLibs` 会先把**旧的** libcamera3.so 合进去——构建全绿但 APK 里是陈旧 .so，症状与「native 改动没生效」无法区分。这条依赖关系已在 build.gradle 显式声明，别动。
 - ABI split 只产 arm64-v8a，输出名 `CAM2Magic-<version>-arm64-v8a.apk`。**文件名是用 `majorVersion/minorVersion/patchVersion` 三个字面量重新拼的、不是读 `versionName`**，改版本号要同时确认这两处；变体没有 ABI filter 时文件名会变成 `...-null.apk`。versionName 靠手工 bump，release tag 也是手工打且必须对得上（只有 `v*` tag 触发 CI）。
 - release 签名代码里的优先级是 `CAM2MAGIC_KEYSTORE_B64` > `CAM2MAGIC_KEYSTORE`（路径）> 本地 `app/keystore.properties`；都没有则产出未签名 APK 并打警告。**但 CI 实际走的是路径分支**——workflow 先把 `CAM2MAGIC_KEYSTORE_B64` secret 解码成临时文件，再以 `CAM2MAGIC_KEYSTORE` 喂给 Gradle，所以 build.gradle 里那个 B64 分支目前是死代码（留给本地/其他 CI）。minify + shrinkResources 开着，见上文 proguard 约束。
 - **配置缓存不能开**：versionCode 在配置阶段执行 `git rev-list --count HEAD`，开缓存后该值被固化、不再随提交递增。gradle.properties 里只有一条**注释**说明，**并没有 `org.gradle.configuration-cache=false`**——所以一个 IDE 设置或误加的 `--configuration-cache` 就能静默冻结 versionCode。构建缓存（`org.gradle.caching=true`）是开着的。同理 CI checkout 必须 `fetch-depth: 0`。
-- **CI 不跑 buildNative、也不跑单测**（[build-release.yml](.github/workflows/build-release.yml)，**仅 `v*` tag 与手动触发，push master 不触发**，唯一命令是 `./gradlew assembleRelease -x lintVitalRelease`）。正式发布流程 = 本机 `buildNative` 更新 jniLibs 产物 → 提交推送 master → 打 `v*` tag 推送（或手动 workflow_dispatch）→ CI 出签名包。CI **只上传 artifact、不创建 Release**。`.so` 是提交进仓库的构建产物，这点与常规直觉相反，是有意的（源码不入库）。
+- **CI 不跑 buildNative、也不跑单测**（[build-release.yml](.github/workflows/build-release.yml)，**仅 `v*` tag 与手动触发，push master 不触发**，唯一命令是 `./gradlew assembleRelease -x lintVitalRelease`）。正式发布流程 = 本机 `buildNative` 更新 jniLibs 产物 → 提交推送 master → 打 `v*` tag 推送（或手动 workflow_dispatch）→ CI 出签名包。CI **只上传 artifact、不创建 Release**。`.so` 是提交进仓库的构建产物（源码也在仓库里，但 CI 不重编），这点与常规直觉相反，是有意的。
 - **本机 git 拿不到仓库时 versionCode 静默退化成 1**：`getGitCommitCount()` 把异常吞了 `return 1`，而 Windows 上仓库目录属主与当前账号不一致时 `git rev-list` 直接报 `detected dubious ownership` → **打出来的包 versionName 照常、versionCode = 1**，装机被当成降级拒绝，症状与「包坏了」无法区分。出正式包前先确认 `git rev-list --count HEAD` 能跑；不能跑就用**进程级**注入绕过（不碰用户全局配置）：`GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=<仓库路径> ./gradlew --no-daemon assembleRelease`——**必须带 `--no-daemon`**，否则 `git` 是在早已启动的 Gradle daemon 环境里执行，看不到客户端的变量。CI（ubuntu）无此问题。
 - Gradle wrapper 的 `distributionUrl` 指向**腾讯云镜像**，不是 services.gradle.org——CI 也从那里下载发行版。

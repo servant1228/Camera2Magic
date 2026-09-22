@@ -24,10 +24,12 @@ captures/
 .DS_Store
 Thumbs.db
 
-# 本地私有源码/文档：仅本机保留，不入库（公开仓库不含）；agent 指南例外
+# 文档：仅 ui-guidelines 入库
 /docs/*
 !/docs/ui-guidelines.md
-/app/src/main/cpp/
+
+# 原生源码已入库（自研渲染引擎，见 app/src/main/cpp/README.md）；忽略本机构建产物
+/app/src/main/cpp/build/
 
 # Release 签名（密钥由 CI secrets 托管；本地密钥/配置不入库）
 app/cam2magic.keystore

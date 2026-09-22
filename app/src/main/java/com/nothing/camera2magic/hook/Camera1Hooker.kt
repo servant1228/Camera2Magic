@@ -240,7 +240,9 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
             if (SM.validMedia == null) return@intercept frame.proceed()
             runCatching {
                 val originBuffer = frame.args[0] as ByteArray
-                NB.overwriteYuvBuffer(originBuffer)
+                // 尺寸取 setParameters 记录的预览尺寸：App 的 onPreviewFrame 缓冲
+                // 就是按它分配的；原生侧按这个尺寸渲染 NV21 并覆盖
+                NB.overwriteYuvBuffer(originBuffer, vSize.width, vSize.height)
             }.onFailure { Dog.e(TAG, "onPreviewFrame overwrite failed: ${it.message}", it, SM.enableLog) }
             frame.proceed()
         }
@@ -266,7 +268,9 @@ class Camera1Hooker(val magic: MagicHook, param: PackageReadyParam) : HookManage
         magic.hook(onPictureTaken).intercept { shot ->
             if (!SM.readyForHook) return@intercept shot.proceed()
             val newArgs = shot.args.toTypedArray()
-            newArgs[0] = NB.overwriteJPEGBytes()
+            // 原生编码失败（无帧源 / 未就绪）时返回 null，退回原始相机 JPEG，
+            // 绝不能让 App 收到空字节数组或 null
+            newArgs[0] = NB.overwriteJPEGBytes() ?: shot.args[0]
             shot.proceed(newArgs)
         }
     }

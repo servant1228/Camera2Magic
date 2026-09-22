@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.graphics.SurfaceTexture
+import android.media.ExifInterface
 
 import android.os.Handler
 import android.os.HandlerThread
@@ -313,6 +314,21 @@ class Camera3 {
         runCatching {
             val fd = pfd.fileDescriptor
 
+            // EXIF 方向交给原生引擎做旋转（画布解码不会应用 EXIF）。读它会移动 fd，
+            // 因此读完先 seek 回 0 再做尺寸解析；镜像类方向（2/4/5/7）与
+            // ImageReaderHooker 的处理保持一致，按 0 处理
+            val mediaRotation = runCatching {
+                when (ExifInterface(fd).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+                )) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                    ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                    ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                    else -> 0
+                }
+            }.getOrDefault(0)
+            Os.lseek(fd, 0, OsConstants.SEEK_SET)
+
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
@@ -350,7 +366,7 @@ class Camera3 {
             renderWidth = (decoded.width * outScale).roundToInt().coerceAtLeast(1)
             renderHeight = (decoded.height * outScale).roundToInt().coerceAtLeast(1)
 
-            NB.updateFrameInfo(renderWidth, renderHeight, 0)
+            NB.updateFrameInfo(renderWidth, renderHeight, mediaRotation)
             SM.applyManualRotationToNative()
             surfaceTexture?.setDefaultBufferSize(renderWidth, renderHeight)
             cachedBitmap = decoded
@@ -391,6 +407,15 @@ class Camera3 {
     }
     fun seekTo(position: Long) { // Ms
         camera3Handler.post { player?.seekTo(position) }
+    }
+
+    /**
+     * 「播放声音」实时生效：把新音量应用到正在播放的 ExoPlayer。
+     * 音频属于 ExoPlayer（Kotlin 侧），原生 .so 只处理画面帧，无法代管；
+     * 这里只是把旧的「开播时读一次」改成拨开关就生效（图片模式/播放器未建时为空操作）。
+     */
+    fun setPlaySound(enabled: Boolean) {
+        camera3Handler.post { player?.volume = if (enabled) 1f else 0f }
     }
     fun stop() {
         if (!initialized.get()) return

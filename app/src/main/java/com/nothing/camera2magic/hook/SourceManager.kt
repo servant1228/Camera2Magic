@@ -85,20 +85,31 @@ object SourceManager {
     fun init(remotePrefs: SharedPreferences) {
         this.prefs = remotePrefs
         refreshPrefs()
-        registerRotationListener()
+        registerPreferenceListener()
     }
 
-    private fun registerRotationListener() {
+    /**
+     * 需要实时生效的全局开关监听。prefs 是 hook 侧的远程 prefs，
+     * 宿主侧每次 save 都会同步过来，所以拨开关就能立刻听到变化。
+     */
+    private fun registerPreferenceListener() {
         if (rotationListener != null) return
         rotationListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             runCatching {
-                // 全局手动旋转变化时实时重新下发，保证运行中立即生效
-                if (key == "main_manually_rotate") {
-                    refreshPrefs()
-                    applyManualRotationToNative()
+                when (key) {
+                    // 全局手动旋转变化时实时重新下发，保证运行中立即生效
+                    "main_manually_rotate" -> {
+                        refreshPrefs()
+                        applyManualRotationToNative()
+                    }
+                    // 播放声音开关：实时改正在播放的 ExoPlayer 音量（图片模式无播放器，空操作）
+                    "main_play_sound" -> {
+                        refreshPrefs()
+                        Camera3().setPlaySound(playSound)
+                    }
                 }
             }.onFailure { e ->
-                Dog.e(TAG, "apply manual rotation failed: ${e.message}", e, enableLog)
+                Dog.e(TAG, "preference listener ($key) failed: ${e.message}", e, enableLog)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(rotationListener)
@@ -190,6 +201,9 @@ object SourceManager {
             if (!::prefs.isInitialized) return
             playSound = prefs.getBoolean(KEY_PLAY_SOUND, false)
             enableLog = prefs.getBoolean(KEY_ENABLE_LOG, false)
+            // 原生日志与模块日志开关同步：历史 .so 无视开关常开输出，是关不掉的指纹。
+            // 用 runCatching 是因为 UnsatisfiedLinkError 不是 Exception，外层 catch 接不住
+            runCatching { NB.setLogEnabled(enableLog) }
             showToast = prefs.getBoolean(KEY_SHOW_TOAST, true)
             manuallyRotate = runCatching { prefs.getInt("main_manually_rotate", 0) }.getOrDefault(0)
 
